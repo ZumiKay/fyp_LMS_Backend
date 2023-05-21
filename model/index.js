@@ -20,7 +20,7 @@ db.book = require('./book.model')(sequelize , Sequelize)
 db.category = require('./categories.model')(sequelize , Sequelize)
 db.role = require('./role.model')(sequelize , Sequelize)
 db.headdepartment = require('./headdepartment.model.js')(sequelize, Sequelize)
-
+db.department = require('./department.model.js')(sequelize , Sequelize)
 
 //relationship
 db.role.hasMany(db.librarian , {foreignKey: 'role_id'})

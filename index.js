@@ -5,7 +5,7 @@ const cors = require('cors')
 const helmet = require('helmet')
 const Router = require('./Routes/route')
 const db = require('./model')
-const { initalrole } = require('./config/config')
+const { initalrole, getgooglebook } = require('./config/config')
 const { resetbook } = require('./controller/book.controller')
 const con = require('node-cron')
 const { deletepickup_borrow } = require('./controller/librarian.controller')
@@ -32,6 +32,8 @@ db.sequelize.sync()
     console.log("Syned DB")
     initalrole(db.role , db.book)
     con.schedule('0 0 * * *' , deletepickup_borrow)
+    
+    
    
 })
 .catch((err) => console.log("Error: " , err))

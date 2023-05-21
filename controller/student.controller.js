@@ -22,8 +22,8 @@ export const login = (req , res) => {
     const {email,password} = req.body
     const generateToken = (user) => {
         
-        const accessToken = jwt.sign( {role: user.role_id , email: user.email} , jwtconfig.secret, {expiresIn:"24h"})
-        const refreshToken = jwt.sign( {role: user.role_id , email: user.email}  , jwtconfig.secret , {expiresIn:"7d"})
+        const accessToken = jwt.sign( {role: user.role_id , email: user.email} , jwtconfig.secret, {expiresIn:"7d"})
+        const refreshToken = jwt.sign( {role: user.role_id , email: user.email}  , jwtconfig.secret , {expiresIn:"14d"})
         refreshtoken.push(refreshToken)
         return {accessToken , refreshToken}
     }
@@ -50,7 +50,8 @@ export const login = (req , res) => {
             email: response.email,
             department: response.department,
             ID: response.studentID,
-            role: response.role.role
+            role: response.role.role,
+            phonenumber: response.phone_number
 
         } , token : {accessToken:token.accessToken , refreshToken:token.refreshToken }})
     } else {
@@ -85,7 +86,8 @@ export const login = (req , res) => {
                             department: response.department,
                             email: response.email,
                             ID: response.ID,
-                            role: response.role.role
+                            role: response.role.role,
+                            phonenumber: response.phone_number
                         },
                         token: {
                             accessToken: token.accessToken,
@@ -117,7 +119,8 @@ export const login = (req , res) => {
                                     ID: response.cardID,
                                     role: response.role.role,
                                     email: response.email,
-                                    id: response.id
+                                    id: response.id,
+                                  
                                 } ,
                                 token: {
                                 accessToken: token.accessToken,
@@ -158,4 +161,34 @@ export const logout = (req ,res) => {
     const {refreshToken} = req.body
     refreshtoken.filter((token) => token != refreshToken)
     res.sendStatus(204)
+}
+
+
+export const createDepartment = async (req, res) => {
+    const { faculty, department } = req.body;
+  
+    try {
+      await db.department.create({
+        faculty: faculty,
+        department: department
+      });
+      return res.sendStatus(200);
+    } catch (error) {
+      console.error(error);
+      return res.sendStatus(500);
+    }
+  };
+  
+
+export const getDepartment = async (req, res) => {
+    const deparments = await db.department.findAll()
+    let data = []
+
+    deparments.map(i => data.push({
+        department: i.department ,
+        faculty : i.faculty 
+    })
+    )
+    return res.status(200).json(data)
+
 }

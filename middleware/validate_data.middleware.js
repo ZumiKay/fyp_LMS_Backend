@@ -20,7 +20,7 @@ export const validate_bookregistration = [
     body('title').notEmpty(),
     body('description').isString(),
     body('author').notEmpty(),
-    body('publisher_date').isDate().notEmpty(),
+    
     body('categories').isArray().notEmpty(),
     (req ,res ,next) => {
         const erros  = validationResult(req)

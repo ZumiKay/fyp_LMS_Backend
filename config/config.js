@@ -1,7 +1,9 @@
 const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
-const QRCode = require('qrcode')
+const QRCode = require('qrcode');
+
+const excelmaker = require('exceljs');
 require('dotenv').config();
 
 export const jwtconfig = {
@@ -85,97 +87,85 @@ export const getgooglebook = (categories, db) => {
         });
 };
 
+//AWS
 const awsS3config = {
     accessKeyId: process.env.AWS_ACCESSKEY,
     secretAccessKey: process.env.AWS_SECRETKEY,
     region: 'ap-southeast-1'
 };
 const S3 = new AWS.S3(awsS3config);
-
-export const uploadfile = (filepath, keyname) => {
-    return new Promise((resolve, reject) => {
-        try {
-            let fs = require('fs');
-            const file = fs.readFileSync(filepath);
-            const bucket = 'fyplms';
-
-            const uploadParam = {
-                Bucket: bucket,
-                Key: keyname,
-                Body: file
-            };
-            S3.upload(uploadParam, (err, data) => {
-                if (err) reject(err);
-                if (data) resolve(data);
-            });
-        } catch (error) {
-            console.log(error);
-            return reject(error);
-        }
-    });
-};
-
-export const getURL = (key) => {
-    return new Promise((resolve, reject) => {
-        try {
-            const path = require('path');
-            const fileName = path.basename(key);
-
-            var params = {
-                Bucket: 'fyplms',
-                Key: key
-            };
-
-            const signedUrl = S3.getSignedUrl('getObject', params);
-
-            if (signedUrl) {
-                return resolve({
-                    signedUrl,
-                    fileName
-                });
-            } else {
-                return reject('Cannot create signed URL');
-            }
-        } catch (err) {
-            return reject('Cannot create signed URL!');
-        }
-    });
-};
-
 export const deleteObject = async (key) => {
-    
-            var params = {
-                Bucket: 'fyplms',
-                Key: key
-            };
+    var params = {
+        Bucket: 'fyplms',
+        Key: key
+    };
 
-            await S3.deleteObject(params, function (err, data) {
-                if (err) {
-                    console.log(err, err.stack);
-                  } else {
-                    console.log('File deleted successfully');
-                  }
-            }).promise()
-
-          
-       
-  
+    await S3.deleteObject(params, function (err, data) {
+        if (err) {
+            console.log(err, err.stack);
+        } else {
+            console.log('File deleted successfully');
+        }
+    }).promise();
 };
 
 export async function generateQRCodeAndUploadToS3(text, bucketName, key) {
     // Generate QR code as a PNG buffer
     const qrCodeBuffer = await QRCode.toBuffer(text, { type: 'png' });
-    
+
     // Upload the QR code buffer to S3
     const params = {
-      Bucket: bucketName,
-      Key: key,
-      Body: qrCodeBuffer,
-      ContentType: 'image/png',
-      ACL: 'public-read'
+        Bucket: bucketName,
+        Key: key,
+        Body: qrCodeBuffer,
+        ContentType: 'image/png',
+        ACL: 'public-read'
     };
     const { Location } = await S3.upload(params).promise();
-  
-    return Location;
-  }
 
+    return Location;
+}
+
+/*......*/
+
+//GENERATE REPORT
+
+
+export const generateExcel = (data, information, informationtypes) => {
+    const workbook = new excelmaker.Workbook();
+    const worksheet = workbook.addWorksheet('Sheet1');
+    workbook.created = new Date();
+
+    worksheet.columns = [
+        { header: 'ID', key: 'id', width: 15 },
+        { header: 'Name', key: 'name', width: 15 },
+        { header: 'Department', key: 'department', width: 15 },
+        { header: 'Email', key: 'email', width: 15 },
+        { header: 'Library Entry (Times)', key: 'entry', width: 40 },
+        information !== 'entry' && { header: 'Borrowed Book (books)', key: 'borrow_book', width: 40 }
+    ];
+
+    data.forEach((i) => {
+        worksheet.addRow({
+            id: i.ID,
+            name: i.fullname,
+            department: i.department,
+            email: i.email,
+            entry: informationtypes !== 'short' ? i.library_entry.map((j) => j.entry_date).join(', ') : i.library_entry.length,
+            borrow_book: information !== 'entry' ? i.borrowedbook.reduce((totalLength, obj) => totalLength + obj.Books.length, 0) : null
+        });
+    });
+
+    worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
+    });
+
+    return workbook;
+};
