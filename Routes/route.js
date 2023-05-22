@@ -4,6 +4,7 @@ import {
     createLibrarian,
     delete_student,
     deleteborrow_book,
+    editlibrarian,
     editstudent,
     exportreport,
     getStudentInfo,
@@ -27,6 +28,7 @@ const roles = getroles();
 Router.post('/register-student', verifytoken, checkRole(roles.librarian), validate_registerInput, registerStudent);
 Router.post('/deletestudent', verifytoken, checkRole(roles.librarian), delete_student);
 Router.post('/register-HD', verifytoken, validate_registerInput, register_HD);
+Router.post('/editlibrarian', verifytoken , checkRole(roles.librarian) , editlibrarian)
 Router.post('/login', validate_login, login);
 Router.post('/logout', logout);
 Router.post('/refreshtoken', refreshToken);

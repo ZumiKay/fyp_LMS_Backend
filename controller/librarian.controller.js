@@ -8,7 +8,6 @@ const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 const PdfPrinter = require('pdfmake');
 
-
 const randomgeneratepassword = (length) => {
     let result = '';
     const character = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
@@ -50,8 +49,6 @@ const handleemail = async (data) => {
     console.log('Email sent', info.messageId);
     console.log('Preview Link', nodemailer.getTestMessageUrl(info));
 };
-
-
 
 export const registerStudent = async (req, res) => {
     const { firstname, lastname, studentID, email, dateofbirth, department, phone_number } = req.body;
@@ -139,6 +136,101 @@ export const editstudent = (req, res) => {
         }
     });
 };
+
+export const editlibrarian = (req, res) => {
+    const { id, oldpwd, newpwd, fullname , ID } = req.body;
+    db.librarian
+        .findOne({
+            where: {
+                id: id
+            }
+        })
+        .then(async (response) => {
+            if (response) {
+                if (newpwd !== '' && fullname === '' && ID === '') {
+                    const isMatch = await bcrypt.compare(oldpwd, response.password);
+                    if (isMatch) {
+                        const salt = await bcrypt.genSalt(10);
+                        const hashedpwd = await bcrypt.hash(newpwd, salt);
+                        await db.librarian.update({ password: hashedpwd }, { where: { id: id } });
+                        return res.sendStatus(200);
+                    }
+                } else if (fullname !== '' && newpwd === '' && ID === '') {
+                    await db.librarian.update(
+                        { fullname: fullname },
+                        {
+                            where: {
+                                id: id
+                            }
+                        }
+                    );
+                    return res.sendStatus(200);
+                } else if (fullname !== '' && newpwd !== '' && ID !== '') {
+                    const isMatch = await bcrypt.compare(oldpwd, response.password);
+                    if (isMatch) {
+                        const salt = await bcrypt.genSalt(10);
+                        const hashedpwd = await bcrypt.hash(newpwd, salt);
+                        await db.librarian.update(
+                            { password: hashedpwd, fullname: fullname , cardID: ID },
+                            {
+                                where: {
+                                    id: id
+                                }
+                            }
+                        );
+                        return res.sendStatus(200);
+                    }
+                } else if(fullname === '' && newpwd === '' && ID !== '') {
+                    await db.librarian.update({cardID : ID} , {where: {
+                        id: id
+                    }})
+                    return res.sendStatus(200)
+                } else if (fullname !== '' && ID !== '' && newpwd === '') {
+                    await db.librarian.update({fullname: fullname , cardID: ID} , {where : {
+                        id: id
+                    }})
+                    return res.sendStatus(200)
+                } else if (fullname !== '' && ID === '' && newpwd !== '')  {
+                    const isMatch = await bcrypt.compare(oldpwd, response.password);
+                    if (isMatch) {
+                        const salt = await bcrypt.genSalt(10);
+                        const hashedpwd = await bcrypt.hash(newpwd, salt);
+                        await db.librarian.update(
+                            { password: hashedpwd, fullname: fullname},
+                            {
+                                where: {
+                                    id: id
+                                }
+                            }
+                        );
+                        return res.sendStatus(200);
+                    }
+                }
+                else if (fullname === '' && ID !== '' && newpwd !== '')  {
+                    const isMatch = await bcrypt.compare(oldpwd, response.password);
+                    if (isMatch) {
+                        const salt = await bcrypt.genSalt(10);
+                        const hashedpwd = await bcrypt.hash(newpwd, salt);
+                        await db.librarian.update(
+                            { password: hashedpwd, cardID: ID},
+                            {
+                                where: {
+                                    id: id
+                                }
+                            }
+                        );
+                        return res.sendStatus(200);
+                    }
+                }
+                else {
+                    return res.sendStatus(400);
+                }
+            } else {
+                return res.sendStatus(500);
+            }
+        })
+        .catch(() => res.sendStatus(500));
+};
 export const register_HD = async (req, res) => {
     const { firstname, lastname, ID, department, phone_number, email } = req.body;
     const roles = await db.role.findAll();
@@ -205,10 +297,9 @@ export const scanEntry = (req, res) => {
                         faculty: data.faculty
                     })
                 )
-                .catch((err) => res.status(500).json(err));
+                .catch(() => res.status(500));
         })
-        .catch((err) => {
-            console.log(err);
+        .catch(() => {
             return res.status(500);
         });
 };
