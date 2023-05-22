@@ -3,7 +3,6 @@ module.exports = (sequelize , Sequelize) => {
         borrow_id: {
             type: Sequelize.STRING,
             unique: true,
-            primaryKey: true,
             allowNull: false
         },
         Books: {
@@ -12,7 +11,8 @@ module.exports = (sequelize , Sequelize) => {
         },
         studentID: {
             type: Sequelize.STRING,
-            allowNull: false
+            allowNull: false,
+            
         },
        
         status: {

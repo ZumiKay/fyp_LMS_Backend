@@ -91,10 +91,10 @@ export const registerStudent = async (req, res) => {
                         return res.status(200).send({ message: 'Student Registered', password: password.password });
                     })
                     .catch((err) => {
-                        return res.status(500).send(err);
+                        return res.sendStatus(500);
                     });
             }
-        });
+        }).catch(() => res.sendStatus(500));
 };
 export const delete_student = async (req, res) => {
     const { id } = req.body;

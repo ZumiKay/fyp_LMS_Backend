@@ -10,10 +10,10 @@ module.exports =(sequelize , Sequelize) => {
         },
 
         studentID: {
-            type: Sequelize.INTEGER,
+            type: Sequelize.STRING,
             allowNull:false,
-            unique: true ,
-            primaryKey:true
+            primaryKey: true
+            
         },
         role_id: {
             type: Sequelize.STRING,
@@ -28,7 +28,7 @@ module.exports =(sequelize , Sequelize) => {
             allowNull: true
         },
         phone_number: {
-            type: Sequelize.INTEGER,
+            type: Sequelize.STRING,
             allowNull: true,
             unique: true
         },

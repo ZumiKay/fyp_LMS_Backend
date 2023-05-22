@@ -3,6 +3,7 @@ module.exports = (sequelize , Sequelize) => {
         studentID:{
             type: Sequelize.STRING,
             allowNull: false,
+            
         },
         
         entry_date: {
