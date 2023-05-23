@@ -16,9 +16,18 @@ export const dbconfig = {
     host: process.env.DB_HOST,
     dialect: 'postgres',
     user: process.env.DB_USER,
-    password: 'lms123',
+    password: process.env.DB_PASS,
     db: process.env.DB_NAME
 };
+
+/* 
+    host: localhost,
+    dialect: 'postgres',
+    user: lms,
+    password: 'lms123',
+    db: fyp
+
+*/
 export const initalrole = async (role, book) => {
     const allrole = await role.findAll();
     const data = [

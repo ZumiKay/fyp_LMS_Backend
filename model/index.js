@@ -1,11 +1,12 @@
 import { dbconfig } from '../config/config.js'
 import Sequelize from 'sequelize'
 
-const sequelize = new Sequelize( dbconfig.db,dbconfig.user , dbconfig.password ,
-    {
-        host: dbconfig.host, 
-        dialect: dbconfig.dialect,
-    }
+const sequelize = new Sequelize( {dialect: dbconfig.dialect,
+host: dbconfig.host,
+port: 5432,
+database: dbconfig.db,
+username: dbconfig.user,
+password: dbconfig.password,}
     )
 const db ={}
 

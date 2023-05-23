@@ -1,47 +1,62 @@
-const express = require('express')
-const app = express()
-const morgan = require('morgan')
-const cors = require('cors')
-const helmet = require('helmet')
-const Router = require('./Routes/route')
-const db = require('./model')
-const { initalrole, getgooglebook } = require('./config/config')
-const { resetbook } = require('./controller/book.controller')
-const con = require('node-cron')
-const { deletepickup_borrow } = require('./controller/librarian.controller')
+const express = require('express');
+const app = express();
+const morgan = require('morgan');
+const cors = require('cors');
+const helmet = require('helmet');
+const Router = require('./Routes/route');
+const db = require('./model');
+const { initalrole, getgooglebook } = require('./config/config');
+const { resetbook } = require('./controller/book.controller');
+const con = require('node-cron');
+const { deletepickup_borrow } = require('./controller/librarian.controller');
 
-
-require('dotenv').config()
+require('dotenv').config();
 //middleware
-app.use(cors({
-    origin:"*"
-}))
-app.use(morgan("dev"))
-app.use(express.json())
-app.use(express.text())
-app.use(express.query())
-app.use(helmet())
-
+app.use(
+    cors({
+        origin: '*'
+    })
+);
+app.use(morgan('dev'));
+app.use(express.json());
+app.use(express.text());
+app.use(express.query());
+app.use(helmet());
 
 //
-app.use("/api" , Router)
+app.use('/api', Router);
 
+//database
+const startServer = () => {
+    app.listen(process.env.PORT, console.log('Server is running on port', process.env.PORT));
+};
+const handleDBConnectionError = (error) => {
+    console.error('Failed to connect to the database:', error);
+    console.log('Restarting the server...');
 
-db.sequelize.sync()
-.then(() => {
-    console.log("Syned DB")
-    initalrole(db.role , db.book)
-    con.schedule('0 0 * * *' , deletepickup_borrow)
-    
-    
-   
-})
-.catch((err) => console.log("Error: " , err))
+    // Restart the server
+    startServer();
+};
+
+db.sequelize
+    .authenticate()
+    .then(() => {
+        startServer();
+        db.sequelize
+            .sync()
+            .then(() => {
+                console.log('Syned DB');
+                initalrole(db.role, db.book);
+                con.schedule('0 0 * * *', deletepickup_borrow);
+            })
+            .catch((err) => console.log('Error: ', err));
+    })
+    .catch((error) => {
+        console.error('Unable to connect to the database:', error);
+        // Handle lost internet connection error here
+        handleDBConnectionError(error);
+    });
+
 // resetbook()
 
-
-
-app.listen(process.env.PORT , console.log("Server is running on port" , process.env.PORT))
-
-
-
+// app.listen(process.env.PORT , console.log("Server is running on port" , process.env.PORT))
