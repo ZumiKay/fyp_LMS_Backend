@@ -1,5 +1,5 @@
-import { Op } from 'sequelize';
-import { generateQRCodeAndUploadToS3, deleteObject, generatePDF, generateExcel } from '../config/config';
+const { Op } = require('sequelize');
+const { generateQRCodeAndUploadToS3, deleteObject, generateExcel } = require('../config/config');
 
 const db = require('../model');
 const axios = require('axios').default;
@@ -26,79 +26,74 @@ const hashedpassword = async () => {
 };
 const handleemail = async (data) => {
     try {
-      const { email, password } = data;
-  
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-  
-      const mailOptions = {
-        from: process.env.EMAIL,
-        to: email,
-        subject: 'Library Account Information',
-        text: 'Here are your email and password for login',
-        html: `
+        const { email, password } = data;
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL,
+            to: email,
+            subject: 'Library Account Information',
+            text: 'Here are your email and password for login',
+            html: `
           <h1>Email: ${email}</h1>
           <h2>Password: ${password}</h2>
           <h3>Have a great day!</h3>
-        `,
-      };
-  
-      const info = await transporter.sendMail(mailOptions);
-      console.log('Email sent:', info.response);
+        `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email sent:', info.response);
     } catch (error) {
-      console.error('Error sending email:', error);
+        console.error('Error sending email:', error);
     }
-  };
-  
+};
 
 export const registerStudent = async (req, res) => {
-  try {
-    const { firstname, lastname, studentID, email, dateofbirth, department, phone_number } = req.body;
-    const roles = await db.role.findAll();
+    try {
+        const { firstname, lastname, studentID, email, dateofbirth, department, phone_number } = req.body;
+        const roles = await db.role.findAll();
 
-    const data = {
-      firstname,
-      lastname,
-      studentID,
-      email,
-      date_of_birth: dateofbirth,
-      role_id: roles.find(({ role }) => role === 'student').role_id,
-      department,
-      phone_number,
-      password: ''
-    };
+        const data = {
+            firstname,
+            lastname,
+            studentID,
+            email,
+            date_of_birth: dateofbirth,
+            role_id: roles.find(({ role }) => role === 'student').role_id,
+            department,
+            phone_number,
+            password: ''
+        };
 
-    const password = await hashedpassword();
-    data.password = password.hashedPassword;
+        const password = await hashedpassword();
+        data.password = password.hashedPassword;
 
-    const existingStudent = await db.student.findOne({
-      where: {
-        [Op.or]: [
-          { email },
-          { studentID },
-          { phone_number }
-        ]
-      }
-    });
+        const existingStudent = await db.student.findOne({
+            where: {
+                [Op.or]: [{ email }, { studentID }, { phone_number }]
+            }
+        });
 
-    if (existingStudent) {
-      return res.status(401).send({ message: 'Student Already Exists' });
+        if (existingStudent) {
+            return res.status(401).send({ message: 'Student Already Exists' });
+        }
+
+        await db.student.create(data);
+
+        handleemail({ email, password: password.password });
+
+        return res.status(200).send({ message: 'Student Registered', password: password.password });
+    } catch (error) {
+        console.error('Error registering student:', error);
+        return res.sendStatus(500);
     }
-
-    await db.student.create(data);
-
-    handleemail({ email, password: password.password });
-
-    return res.status(200).send({ message: 'Student Registered', password: password.password });
-  } catch (error) {
-    console.error('Error registering student:', error);
-    return res.sendStatus(500);
-  }
 };
 
 export const delete_student = async (req, res) => {
@@ -114,41 +109,40 @@ export const delete_student = async (req, res) => {
 
 export const editstudent = async (req, res) => {
     try {
-      const { id, oldpwd, newpwd } = req.body;
-  
-      const student = await db.student.findOne({ where: { studentID: id } });
-      if (student) {
-        const isMatch = await bcrypt.compare(oldpwd, student.password);
-        if (isMatch) {
-          const salt = await bcrypt.genSalt(10);
-          const hashedpwd = await bcrypt.hash(newpwd, salt);
-          await db.student.update({ password: hashedpwd }, { where: { studentID: id } });
-          return res.status(200).json({ message: 'Password Changed' });
+        const { id, oldpwd, newpwd } = req.body;
+
+        const student = await db.student.findOne({ where: { studentID: id } });
+        if (student) {
+            const isMatch = await bcrypt.compare(oldpwd, student.password);
+            if (isMatch) {
+                const salt = await bcrypt.genSalt(10);
+                const hashedpwd = await bcrypt.hash(newpwd, salt);
+                await db.student.update({ password: hashedpwd }, { where: { studentID: id } });
+                return res.status(200).json({ message: 'Password Changed' });
+            } else {
+                return res.status(403).json({ message: 'Wrong Password' });
+            }
         } else {
-          return res.status(403).json({ message: 'Wrong Password' });
+            const headDepartment = await db.headdepartment.findOne({ where: { ID: id } });
+            if (headDepartment) {
+                const isMatch = await bcrypt.compare(oldpwd, headDepartment.password);
+                if (isMatch) {
+                    const salt = await bcrypt.genSalt(10);
+                    const hashedpwd = await bcrypt.hash(newpwd, salt);
+                    await db.headdepartment.update({ password: hashedpwd }, { where: { ID: id } });
+                    return res.status(200).json({ message: 'Password Changed' });
+                }
+            }
         }
-      } else {
-        const headDepartment = await db.headdepartment.findOne({ where: { ID: id } });
-        if (headDepartment) {
-          const isMatch = await bcrypt.compare(oldpwd, headDepartment.password);
-          if (isMatch) {
-            const salt = await bcrypt.genSalt(10);
-            const hashedpwd = await bcrypt.hash(newpwd, salt);
-            await db.headdepartment.update({ password: hashedpwd }, { where: { ID: id } });
-            return res.status(200).json({ message: 'Password Changed' });
-          }
-        }
-      }
-      return res.status(404).json({ message: 'User not found' });
+        return res.status(404).json({ message: 'User not found' });
     } catch (error) {
-      console.error('Error editing student:', error);
-      return res.sendStatus(500);
+        console.error('Error editing student:', error);
+        return res.sendStatus(500);
     }
-  };
-  
+};
 
 export const editlibrarian = (req, res) => {
-    const { id, oldpwd, newpwd, fullname , ID } = req.body;
+    const { id, oldpwd, newpwd, fullname, ID } = req.body;
     db.librarian
         .findOne({
             where: {
@@ -181,7 +175,7 @@ export const editlibrarian = (req, res) => {
                         const salt = await bcrypt.genSalt(10);
                         const hashedpwd = await bcrypt.hash(newpwd, salt);
                         await db.librarian.update(
-                            { password: hashedpwd, fullname: fullname , cardID: ID },
+                            { password: hashedpwd, fullname: fullname, cardID: ID },
                             {
                                 where: {
                                     id: id
@@ -190,23 +184,33 @@ export const editlibrarian = (req, res) => {
                         );
                         return res.sendStatus(200);
                     }
-                } else if(fullname === '' && newpwd === '' && ID !== '') {
-                    await db.librarian.update({cardID : ID} , {where: {
-                        id: id
-                    }})
-                    return res.sendStatus(200)
+                } else if (fullname === '' && newpwd === '' && ID !== '') {
+                    await db.librarian.update(
+                        { cardID: ID },
+                        {
+                            where: {
+                                id: id
+                            }
+                        }
+                    );
+                    return res.sendStatus(200);
                 } else if (fullname !== '' && ID !== '' && newpwd === '') {
-                    await db.librarian.update({fullname: fullname , cardID: ID} , {where : {
-                        id: id
-                    }})
-                    return res.sendStatus(200)
-                } else if (fullname !== '' && ID === '' && newpwd !== '')  {
+                    await db.librarian.update(
+                        { fullname: fullname, cardID: ID },
+                        {
+                            where: {
+                                id: id
+                            }
+                        }
+                    );
+                    return res.sendStatus(200);
+                } else if (fullname !== '' && ID === '' && newpwd !== '') {
                     const isMatch = await bcrypt.compare(oldpwd, response.password);
                     if (isMatch) {
                         const salt = await bcrypt.genSalt(10);
                         const hashedpwd = await bcrypt.hash(newpwd, salt);
                         await db.librarian.update(
-                            { password: hashedpwd, fullname: fullname},
+                            { password: hashedpwd, fullname: fullname },
                             {
                                 where: {
                                     id: id
@@ -215,14 +219,13 @@ export const editlibrarian = (req, res) => {
                         );
                         return res.sendStatus(200);
                     }
-                }
-                else if (fullname === '' && ID !== '' && newpwd !== '')  {
+                } else if (fullname === '' && ID !== '' && newpwd !== '') {
                     const isMatch = await bcrypt.compare(oldpwd, response.password);
                     if (isMatch) {
                         const salt = await bcrypt.genSalt(10);
                         const hashedpwd = await bcrypt.hash(newpwd, salt);
                         await db.librarian.update(
-                            { password: hashedpwd, cardID: ID},
+                            { password: hashedpwd, cardID: ID },
                             {
                                 where: {
                                     id: id
@@ -231,8 +234,7 @@ export const editlibrarian = (req, res) => {
                         );
                         return res.sendStatus(200);
                     }
-                }
-                else {
+                } else {
                     return res.sendStatus(400);
                 }
             } else {
@@ -282,74 +284,72 @@ export const createLibrarian = async (req, res) => {
 
 export const scanEntry = async (req, res) => {
     try {
-      const { url } = req.body;
-      const id = url.replace('https://my.paragoniu.edu.kh/qr?student_id=', '');
-  
-      const response = await axios.get(`https://my.paragoniu.edu.kh/api/anonymous/students/${id}`);
-      const data = response.data.data;
-      const { id_number, profile_url, name, department, faculty } = data;
-  
-      const formattedDateTime = getFormattedDateTime();
-  
-      await db.library_entry.create({
-        studentID: id_number,
-        entry_date: formattedDateTime
-      });
-  
-      return res.status(200).json({
-        ID: id_number,
-        profile: profile_url,
-        name: name,
-        department: department,
-        faculty: faculty
-      });
+        const { url } = req.body;
+        const id = url.replace('https://my.paragoniu.edu.kh/qr?student_id=', '');
+
+        const response = await axios.get(`https://my.paragoniu.edu.kh/api/anonymous/students/${id}`);
+        const data = response.data.data;
+        const { id_number, profile_url, name, department, faculty } = data;
+
+        const formattedDateTime = getFormattedDateTime();
+
+        await db.library_entry.create({
+            studentID: id_number,
+            entry_date: formattedDateTime
+        });
+
+        return res.status(200).json({
+            ID: id_number,
+            profile: profile_url,
+            name: name,
+            department: department,
+            faculty: faculty
+        });
     } catch (error) {
-      console.error('Error scanning entry:', error);
-      return res.sendStatus(500);
+        console.error('Error scanning entry:', error);
+        return res.sendStatus(500);
     }
-  };
-  
+};
+
 function getFormattedDateTime() {
     const date = new Date();
     const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
     const formattedTime = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
     return `${formattedDate} ${formattedTime}`;
-  }
-  
+}
+
 export const getStudentInfo = async (req, res) => {
     const response = await db.library_entry.findAll();
     return res.status(200).json(response);
 };
 export const getStudentList = async (req, res) => {
     try {
-      const students = await db.student.findAll({
-        include: [
-          {
-            model: db.library_entry,
-            as: 'library_entries'
-          },
-          db.borrow_book
-        ]
-      });
-  
-      const studentData = students.map((student) => ({
-        studentID: student.studentID,
-        firstname: student.firstname,
-        lastname: student.lastname,
-        department: student.department,
-        phonenumber: student.phone_number,
-        email: student.email,
-        library_entry: student.library_entries,
-        borrow_book: student.borrow_books
-      }));
-  
-      return res.status(200).json(studentData);
+        const students = await db.student.findAll({
+            include: [
+                {
+                    model: db.library_entry,
+                    as: 'library_entries'
+                },
+                db.borrow_book
+            ]
+        });
+
+        const studentData = students.map((student) => ({
+            studentID: student.studentID,
+            firstname: student.firstname,
+            lastname: student.lastname,
+            department: student.department,
+            phonenumber: student.phone_number,
+            email: student.email,
+            library_entry: student.library_entries,
+            borrow_book: student.borrow_books
+        }));
+
+        return res.status(200).json(studentData);
     } catch (error) {
-      
-      return res.sendStatus(500);
+        return res.sendStatus(500);
     }
-  };
-  
+};
 
 export const borrowBook = async (req, res) => {
     const { borrowbooks, ID, id } = req.body;
@@ -524,53 +524,56 @@ const dayleft = (enddate) => {
 
 export const getborrowbook_librarian = async (req, res) => {
     try {
-      const date = new Date();
-      const borrowedbooks = await db.borrow_book.findAll({ include: [db.student] });
-      const borroweddata = await Promise.all(
-        borrowedbooks.map((book) => {
-          let return_date = null;
-  
-          if (book.return_date === null && book.status !== 'To Pickup') {
-            const expectreturn = new Date(book.expect_return_date);
-            if (expectreturn >= date) {
-              const day = dayleft(book.expect_return_date);
-              return_date = `To be returned in ${day} days`;
-            } else {
-              return_date = 'Please return the book';
-            }
-          } else if (book.status === 'returned') {
-            return_date = book.return_date;
-          } else if (book.status === 'To Pickup') {
-            return deletepickup_borrow();
-          }
-  
-          return {
-            borrow_id: book.borrow_id,
-            Books: book.Books,
-            borrow_date: book.borrow_date,
-            student: {
-              studentID: book.studentID,
-              firstname: book.student.firstname,
-              lastname: book.student.lastname
-            },
-            status: book.status,
-            expect_return_date: book.expect_return_date,
-            qrcode: book.qrcode,
-            studentID: book.studentID,
-            updatedAt: book.updatedAt,
-            createdAt: book.createdAt,
-            return_date
-          };
-        })
-      );
-  
-      return res.status(200).json(borroweddata);
+        const date = new Date();
+        const borrowedbooks = await db.borrow_book.findAll({
+            include: [db.student],
+            where: {}
+        });
+        let borrowdata = [];
+        await Promise.all(
+            borrowedbooks.map((book) => {
+               
+                let return_date = null;
+                if (book.return_date === null && book.status !== 'To Pickup') {
+                    const expectreturn = new Date(book.expect_return_date);
+                    if (expectreturn >= date) {
+                        const day = dayleft(book.expect_return_date);
+                        return_date = `To be returned in ${day} days`;
+                    } else {
+                        return_date = 'Please return the book';
+                    }
+                } else if (book.status === 'returned') {
+                    return_date = book.return_date;
+                } else if (book.status === 'To Pickup') {
+                    deletepickup_borrow();
+                }
+                
+                borrowdata.push({
+                    borrow_id: book.borrow_id,
+                    Books: book.Books,
+                    borrow_date: book.borrow_date,
+                    student: {
+                        studentID: book.student.studentID,
+                        firstname: book.student.firstname,
+                        lastname: book.student.lastname
+                    },
+                    status: book.status,
+                    expect_return_date: book.expect_return_date,
+                    qrcode: book.qrcode,
+                    studentID: book.studentID,
+                    updatedAt: book.updatedAt,
+                    createdAt: book.createdAt,
+                    return_date: return_date
+                });
+            }) 
+        );
+       
+        return res.status(200).json(borrowdata);
     } catch (error) {
-      
-      return res.sendStatus(500);
+        
+        return res.sendStatus(500);
     }
-  };
-  
+};
 
 export const getborrowbook_student = async (req, res) => {
     const { ID } = req.params;
@@ -603,20 +606,19 @@ export const getborrowbook_student = async (req, res) => {
         });
         return res.status(200).json(borrowed_data);
     } catch (err) {
-        
         return res.status(500);
     }
 };
 export const deletepickup_borrow = async () => {
-    const date = new Date();
-    const oneDayInMilliseconds = 24 * 60 * 60 * 1000;
+    const twentyFourHoursAgo = new Date();
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
     try {
         const result = await db.borrow_book.findAll({
             where: {
                 status: 'To Pickup',
                 createdAt: {
-                    [Op.lt]: new Date(date - oneDayInMilliseconds)
+                    [Op.lt]: twentyFourHoursAgo
                 }
             }
         });

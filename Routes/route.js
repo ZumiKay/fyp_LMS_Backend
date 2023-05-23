@@ -1,5 +1,5 @@
-import { Router as _Router } from 'express';
-import {
+const _Router = require('express').Router
+const {
     borrowBook,
     createLibrarian,
     delete_student,
@@ -7,7 +7,6 @@ import {
     editlibrarian,
     editstudent,
     exportreport,
-    getStudentInfo,
     getStudentList,
     getborrowbook_librarian,
     getborrowbook_student,
@@ -15,11 +14,11 @@ import {
     registerStudent,
     register_HD,
     scanEntry
-} from '../controller/librarian.controller';
-import { validate_bookregistration, validate_login, validate_registerInput } from '../middleware/validate_data.middleware';
-import { createDepartment, getDepartment, getroles, login, logout, refreshToken } from '../controller/student.controller';
-import { checkRole, verifytoken } from '../middleware/role_check.middleware';
-import { createbook, deletebook, editbook, getbook } from '../controller/book.controller';
+} = require('../controller/librarian.controller');
+const { validate_bookregistration, validate_login, validate_registerInput } = require('../middleware/validate_data.middleware');
+const { createDepartment, getDepartment, getroles, login, logout, refreshToken }  = require('../controller/student.controller');
+const { checkRole, verifytoken }  = require('../middleware/role_check.middleware');
+const { createbook, deletebook, editbook, getbook } = require('../controller/book.controller');
 
 const Router = _Router();
 const roles = getroles();

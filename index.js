@@ -5,12 +5,16 @@ const cors = require('cors');
 const helmet = require('helmet');
 const Router = require('./Routes/route');
 const db = require('./model');
-const { initalrole, getgooglebook } = require('./config/config');
-const { resetbook } = require('./controller/book.controller');
+const { initalrole } = require('./config/config');
 const con = require('node-cron');
 const { deletepickup_borrow } = require('./controller/librarian.controller');
 
 require('dotenv').config();
+
+//Firebase
+
+//
+
 //middleware
 app.use(
     cors({
@@ -41,8 +45,7 @@ const handleDBConnectionError = (error) => {
 db.sequelize
     .authenticate()
     .then(() => {
-        startServer();
-        db.sequelize
+    db.sequelize
             .sync()
             .then(() => {
                 console.log('Syned DB');
@@ -56,7 +59,6 @@ db.sequelize
         // Handle lost internet connection error here
         handleDBConnectionError(error);
     });
-
+startServer();
 // resetbook()
 
-// app.listen(process.env.PORT , console.log("Server is running on port" , process.env.PORT))

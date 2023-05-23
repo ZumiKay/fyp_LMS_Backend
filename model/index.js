@@ -1,5 +1,5 @@
-import { dbconfig } from '../config/config.js'
-import Sequelize from 'sequelize'
+const { dbconfig } = require('../config/config.js')
+const Sequelize  = require('sequelize')
 
 const sequelize = new Sequelize( {dialect: dbconfig.dialect,
 host: dbconfig.host,

@@ -1,6 +1,6 @@
 
-import { Op} from 'sequelize'
-import { jwtconfig } from '../config/config'
+const { Op} =require('sequelize')
+const { jwtconfig } = require('../config/config')
 
 
 const db = require('../model')

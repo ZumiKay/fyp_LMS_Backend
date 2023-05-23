@@ -1,4 +1,4 @@
-import { Op } from 'sequelize'
+const { Op } = require('sequelize')
 
 const db = require('../model')
 
