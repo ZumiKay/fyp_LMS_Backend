@@ -588,7 +588,7 @@ export const getborrowbook_student = async (req, res) => {
         if (book.return_date === null && book.status === 'PickedUp') {
           if (book.expect_return_date >= date) {
             const day = dayleft(book.expect_return_date);
-            return_date = `To be returned in ${day}`;
+            return_date = `To be returned in ${day} days`;
           } else {
             return_date = 'Please return the book';
           }
