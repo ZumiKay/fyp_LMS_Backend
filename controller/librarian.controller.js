@@ -291,11 +291,11 @@ export const scanEntry = async (req, res) => {
         const data = response.data.data;
         const { id_number, profile_url, name, department, faculty } = data;
 
-        const formattedDateTime = getFormattedDateTime();
+        const nowdate = new Date();
 
         await db.library_entry.create({
             studentID: id_number,
-            entry_date: formattedDateTime
+            entry_date: `${nowdate.getDate()}/${nowdate.getMonth() + 1}/${nowdate.getFullYear()} ${nowdate.getHours()}:${nowdate.getMinutes().toString().padStart(2,'0')}:${nowdate.getSeconds()}`
         });
 
         return res.status(200).json({
@@ -311,12 +311,6 @@ export const scanEntry = async (req, res) => {
     }
 };
 
-function getFormattedDateTime() {
-    const date = new Date();
-    const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
-    const formattedTime = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
-    return `${formattedDate} ${formattedTime}`;
-}
 
 export const getStudentInfo = async (req, res) => {
     const response = await db.library_entry.findAll();
@@ -543,7 +537,8 @@ export const getborrowbook_librarian = async (req, res) => {
                         return_date = 'Please return the book';
                     }
                 } else if (book.status === 'returned') {
-                    return_date = book.return_date;
+                    return_date = `${new Date(book.return_date).toLocaleDateString('en')}/
+                     ${new Date(book.return_date).getHours()}:${new Date(book.return_date).getMinutes()}:${new Date(book.return_date).getSeconds()}`;
                 } else if (book.status === 'To Pickup') {
                     deletepickup_borrow();
                 }
@@ -555,7 +550,8 @@ export const getborrowbook_librarian = async (req, res) => {
                     student: {
                         studentID: book.student.studentID,
                         firstname: book.student.firstname,
-                        lastname: book.student.lastname
+                        lastname: book.student.lastname ,
+                        phonenumber: book.student.phone_number
                     },
                     status: book.status,
                     expect_return_date: book.expect_return_date,
@@ -576,39 +572,47 @@ export const getborrowbook_librarian = async (req, res) => {
 };
 
 export const getborrowbook_student = async (req, res) => {
-    const { ID } = req.params;
-    const date = new Date();
-    const borrowedbooks = await db.borrow_book.findAll({
-        where: {
-            studentID: ID,
-            createdAt: {
-                [Op.gte]: new Date(new Date() - 24 * 60 * 60 * 1000)
-            }
-        }
-    });
-    const borrowed_data = [];
     try {
-        borrowedbooks.forEach((book) => {
-            borrowed_data.push({
-                borrow_id: book.borrow_id,
-                Book: book
-            });
-            if (book.return_date === null && book.status !== 'To Pickup') {
-                if (book.expect_return_date > date) {
-                    const day = dayleft(book.expect_return_date);
-                    borrowed_data['return_date'] = `To be return in ${day}`;
-                } else {
-                    borrowed_data['return_date'] = 'Please return the book';
-                }
-            } else if (book.status !== 'To Pickup') {
-                borrowed_data['return_date'] = book.return_date;
-            }
-        });
-        return res.status(200).json(borrowed_data);
+      const { ID } = req.params;
+      const date = new Date();
+  
+      const borrowedbooks = await db.borrow_book.findAll({
+        where: {
+          studentID: ID,
+        },
+      });
+  
+      const borrowed_data = borrowedbooks.map((book) => {
+        let return_date = '';
+  
+        if (book.return_date === null && book.status === 'PickedUp') {
+          if (book.expect_return_date >= date) {
+            const day = dayleft(book.expect_return_date);
+            return_date = `To be returned in ${day}`;
+          } else {
+            return_date = 'Please return the book';
+          }
+        } else if (book.status === 'returned') {
+          return_date = `${new Date(book.return_date).toLocaleDateString('en')}/
+          ${new Date(book.return_date).getHours()}:${new Date(book.return_date).getMinutes()}:${new Date(book.return_date).getSeconds()}`;
+        } else {
+            deletepickup_borrow()
+        }
+  
+        return {
+          borrow_id: book.borrow_id,
+          Book: book,
+          return_date: return_date,
+        };
+      });
+  
+      return res.status(200).json(borrowed_data);
     } catch (err) {
-        return res.status(500);
+      console.error(err);
+      return res.status(500).json({ message: 'Internal server error' });
     }
-};
+  };
+  
 export const deletepickup_borrow = async () => {
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
