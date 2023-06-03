@@ -18,7 +18,7 @@ require('dotenv').config();
 //middleware
 app.use(
     cors({
-        origin: '*'
+        origin: 'http://localhost:3000'
     })
 );
 app.use(morgan('dev'));
@@ -45,6 +45,7 @@ const handleDBConnectionError = (error) => {
 db.sequelize
     .authenticate()
     .then(() => {
+    
     db.sequelize
             .sync()
             .then(() => {
@@ -56,9 +57,9 @@ db.sequelize
     })
     .catch((error) => {
         console.error('Unable to connect to the database:', error);
-        // Handle lost internet connection error here
+       
         handleDBConnectionError(error);
     });
-startServer();
-// resetbook()
+
+startServer()
 

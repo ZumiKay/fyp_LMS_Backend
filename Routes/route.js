@@ -16,7 +16,7 @@ const {
     scanEntry
 } = require('../controller/librarian.controller');
 const { validate_bookregistration, validate_login, validate_registerInput } = require('../middleware/validate_data.middleware');
-const { createDepartment, getDepartment, getroles, login, logout, refreshToken }  = require('../controller/student.controller');
+const { createDepartment, getDepartment, getroles, login, logout, refreshToken, deletedepartment }  = require('../controller/student.controller');
 const { checkRole, verifytoken }  = require('../middleware/role_check.middleware');
 const { createbook, deletebook, editbook, getbook } = require('../controller/book.controller');
 
@@ -34,6 +34,7 @@ Router.post('/refreshtoken', refreshToken);
 Router.post('/updatepwd', verifytoken, editstudent);
 Router.post('/createdepartment', verifytoken, checkRole(roles.librarian), createDepartment);
 Router.get('/getdepartment', verifytoken, getDepartment);
+Router.post('/deletedepartment' , verifytoken , checkRole(roles.librarian) , deletedepartment)
 
 //book
 Router.get('/getbook', verifytoken, getbook);

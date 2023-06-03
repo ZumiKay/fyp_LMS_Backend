@@ -40,18 +40,52 @@ const handleemail = async (data) => {
             from: process.env.EMAIL,
             to: email,
             subject: 'Library Account Information',
-            text: 'Here are your email and password for login',
-            html: `
-          <h1>Email: ${email}</h1>
-          <h2>Password: ${password}</h2>
-          <h3>Have a great day!</h3>
-        `
+            text: 'Here are your email and password for login to Paragon.U Library',
+            html: `<style>
+                body {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    width: 100%;
+                    align-items: center;
+                    background: linear-gradient(to right, #667db6, #0082c8, #0082c8, #667db6);
+                   
+                }
+               
+                .logo {
+                    width: 200px;
+                    height: 250px;
+                    object-fit: cover;
+                }
+                .email_container {
+                    background-color: white;
+                    box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 1px 3px 1px;
+                    width: fit-content;
+                    padding:50px;
+                    border-radius: 25px;
+                    text-align: center;
+                    color: black;
+                }
+                p{
+                    position: absolute;
+                    bottom: 0;
+                }
+                
+                
+            </style>
+            <body>
+                <img class="logo" src="https://firebasestorage.googleapis.com/v0/b/fyp-9ae4d.appspot.com/o/PARAGON%20U%20LIBRARY-4.png?alt=media&token=76c99524-963d-4783-9d08-4f9d98bd5ab1" alt="Logo">
+                <div class="email_container">
+                    <h2>Email: ${email}</h2>
+                    <h2>Password: ${password}</h2>
+                </div>
+                <p>All Right Reserve Paragon.U Library @2023</p>
+            </body>`
         };
 
-        const info = await transporter.sendMail(mailOptions);
-        console.log('Email sent:', info.response);
+        await transporter.sendMail(mailOptions);
     } catch (error) {
-        console.error('Error sending email:', error);
+        return error;
     }
 };
 
@@ -84,14 +118,12 @@ export const registerStudent = async (req, res) => {
         if (existingStudent) {
             return res.status(401).send({ message: 'Student Already Exists' });
         }
-
-        await db.student.create(data);
-
         handleemail({ email, password: password.password });
+        await db.student.create(data);
 
         return res.status(200).send({ message: 'Student Registered', password: password.password });
     } catch (error) {
-        console.error('Error registering student:', error);
+       
         return res.sendStatus(500);
     }
 };
@@ -102,7 +134,7 @@ export const delete_student = async (req, res) => {
         await db.student.destroy({ where: { studentID: { [Op.in]: id } } });
         return res.sendStatus(200);
     } catch (error) {
-        console.error(error);
+       
         return res.sendStatus(500);
     }
 };
@@ -264,7 +296,7 @@ export const register_HD = async (req, res) => {
             return res.status(200).json({ message: 'Headdepartment Registered', password: password.password });
         })
         .catch((err) => {
-            console.log(err);
+            
             return res.status(500);
         });
 };
@@ -289,28 +321,39 @@ export const scanEntry = async (req, res) => {
 
         const response = await axios.get(`https://my.paragoniu.edu.kh/api/anonymous/students/${id}`);
         const data = response.data.data;
-        const { id_number, profile_url, name, department, faculty } = data;
 
-        const nowdate = new Date();
+        if (data) {
+            const nowDate = new Date();
+            const id_number = data.id_number;
+            const profile_url = data.profile_url;
+            const name = data.name;
+            const department = data.department;
+            const faculty = data.faculty;
 
-        await db.library_entry.create({
-            studentID: id_number,
-            entry_date: `${nowdate.getDate()}/${nowdate.getMonth() + 1}/${nowdate.getFullYear()} ${nowdate.getHours()}:${nowdate.getMinutes().toString().padStart(2,'0')}:${nowdate.getSeconds()}`
-        });
+            const stu = await db.student.findOne({ where: { studentID: id_number } });
+            if (stu) {
+                await db.library_entry.create({
+                    studentID: id_number,
+                    entry_date: nowDate
+                });
 
-        return res.status(200).json({
-            ID: id_number,
-            profile: profile_url,
-            name: name,
-            department: department,
-            faculty: faculty
-        });
+                return res.status(200).json({
+                    ID: id_number,
+                    profile: profile_url,
+                    name: name,
+                    department: department,
+                    faculty: faculty
+                });
+            } else {
+                return res.status(401).json({ message: 'PLEASE REGISTER THE STUDENT' });
+            }
+        } else {
+            return res.status(500).json({ message: 'INVALID QR CODE' });
+        }
     } catch (error) {
-        console.error('Error scanning entry:', error);
-        return res.sendStatus(500);
+        return res.status(500).json({ message: 'INVALID QR CODE'});
     }
 };
-
 
 export const getStudentInfo = async (req, res) => {
     const response = await db.library_entry.findAll();
@@ -384,7 +427,7 @@ export const borrowBook = async (req, res) => {
 
         return res.status(200).json({ borrow_id, qrcode: data.qrcode });
     } catch (err) {
-        console.log(err);
+       
         return res.status(500);
     }
 };
@@ -472,7 +515,7 @@ export const pickupandreturnbook = async (req, res) => {
                     response.map(async (data) => {
                         await db.borrow_book.update(
                             {
-                                status: data.expect_return_date < date ? `return ${lateday(date, data.expect_return_date)}` : 'returned',
+                                status: data.expect_return_date < date ? `returned ${lateday(date, data.expect_return_date)} days late` : 'returned',
                                 return_date: date,
                                 qrcode: ''
                             },
@@ -526,7 +569,6 @@ export const getborrowbook_librarian = async (req, res) => {
         let borrowdata = [];
         await Promise.all(
             borrowedbooks.map((book) => {
-               
                 let return_date = null;
                 if (book.return_date === null && book.status !== 'To Pickup') {
                     const expectreturn = new Date(book.expect_return_date);
@@ -537,12 +579,12 @@ export const getborrowbook_librarian = async (req, res) => {
                         return_date = 'Please return the book';
                     }
                 } else if (book.status === 'returned') {
-                    return_date = `${new Date(book.return_date).toLocaleDateString('en')}/
+                    return_date = `${new Date(book.return_date).toLocaleDateString('en')},
                      ${new Date(book.return_date).getHours()}:${new Date(book.return_date).getMinutes()}:${new Date(book.return_date).getSeconds()}`;
                 } else if (book.status === 'To Pickup') {
                     deletepickup_borrow();
                 }
-                
+
                 borrowdata.push({
                     borrow_id: book.borrow_id,
                     Books: book.Books,
@@ -550,7 +592,7 @@ export const getborrowbook_librarian = async (req, res) => {
                     student: {
                         studentID: book.student.studentID,
                         firstname: book.student.firstname,
-                        lastname: book.student.lastname ,
+                        lastname: book.student.lastname,
                         phonenumber: book.student.phone_number
                     },
                     status: book.status,
@@ -561,58 +603,57 @@ export const getborrowbook_librarian = async (req, res) => {
                     createdAt: book.createdAt,
                     return_date: return_date
                 });
-            }) 
+            })
         );
-       
+
         return res.status(200).json(borrowdata);
     } catch (error) {
-        
         return res.sendStatus(500);
     }
 };
 
 export const getborrowbook_student = async (req, res) => {
     try {
-      const { ID } = req.params;
-      const date = new Date();
-  
-      const borrowedbooks = await db.borrow_book.findAll({
-        where: {
-          studentID: ID,
-        },
-      });
-  
-      const borrowed_data = borrowedbooks.map((book) => {
-        let return_date = '';
-  
-        if (book.return_date === null && book.status === 'PickedUp') {
-          if (book.expect_return_date >= date) {
-            const day = dayleft(book.expect_return_date);
-            return_date = `To be returned in ${day} days`;
-          } else {
-            return_date = 'Please return the book';
-          }
-        } else if (book.status === 'returned') {
-          return_date = `${new Date(book.return_date).toLocaleDateString('en')}/
+        const { ID } = req.params;
+        const date = new Date();
+
+        const borrowedbooks = await db.borrow_book.findAll({
+            where: {
+                studentID: ID
+            }
+        });
+
+        const borrowed_data = borrowedbooks.map((book) => {
+            let return_date = '';
+
+            if (book.return_date === null && book.status === 'PickedUp') {
+                if (book.expect_return_date >= date) {
+                    const day = dayleft(book.expect_return_date);
+                    return_date = `To be returned in ${day} days`;
+                } else {
+                    return_date = 'Please return the book';
+                }
+            } else if (book.status === 'returned') {
+                return_date = `${new Date(book.return_date).toLocaleDateString('en')}/
           ${new Date(book.return_date).getHours()}:${new Date(book.return_date).getMinutes()}:${new Date(book.return_date).getSeconds()}`;
-        } else {
-            deletepickup_borrow()
-        }
-  
-        return {
-          borrow_id: book.borrow_id,
-          Book: book,
-          return_date: return_date,
-        };
-      });
-  
-      return res.status(200).json(borrowed_data);
+            } else {
+                deletepickup_borrow();
+            }
+
+            return {
+                borrow_id: book.borrow_id,
+                Book: book,
+                return_date: return_date
+            };
+        });
+
+        return res.status(200).json(borrowed_data);
     } catch (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Internal server error' });
+        console.error(err);
+        return res.status(500).json({ message: 'Internal server error' });
     }
-  };
-  
+};
+
 export const deletepickup_borrow = async () => {
     const twentyFourHoursAgo = new Date();
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
@@ -741,8 +782,8 @@ export const exportreport = async (req, res) => {
         });
 
         if (result.length === 0) {
-            return res.status(500).send('No Result');
-        }
+            return res.status(404).send('No Student Found');
+        } else {
 
         const data = result.map((student) => {
             const { studentID, firstname, lastname, department, email, phone_number } = student;
@@ -813,9 +854,9 @@ export const exportreport = async (req, res) => {
             res.setHeader('Content-Disposition', `attachment; filename="${name}.xlsx"`);
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             res.send(buffer);
-        }
+        }}
     } catch (error) {
-        return res.status(500).send('An error occurred');
+        return res.status(500).json( { message:'An error occurred'});
     }
 };
 const filterDataByTimeRange = (data, range) => {

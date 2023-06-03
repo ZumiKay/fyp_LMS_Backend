@@ -192,3 +192,11 @@ export const getDepartment = async (req, res) => {
     return res.status(200).json(data)
 
 }
+
+export const deletedepartment = async(req ,res) => {
+    const {department} = req.body
+    
+    db.department.destroy({where: {
+       department: department
+    }}).then(() => res.sendStatus(200)).catch(() => res.sendStatus(500))
+}
