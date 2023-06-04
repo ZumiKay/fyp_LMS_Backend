@@ -18,7 +18,7 @@ require('dotenv').config();
 //middleware
 app.use(
     cors({
-        origin: 'http://localhost:3000'
+        origin: 'https://fyp-9ae4d.web.app'
     })
 );
 app.use(morgan('dev'));
