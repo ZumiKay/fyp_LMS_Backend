@@ -334,7 +334,7 @@ export const scanEntry = async (req, res) => {
             if (stu) {
                 await db.library_entry.create({
                     studentID: id_number,
-                    entry_date: nowDate
+                    entry_date: nowDate.toString()
                 });
 
                 return res.status(200).json({
@@ -351,6 +351,7 @@ export const scanEntry = async (req, res) => {
             return res.status(500).json({ message: 'INVALID QR CODE' });
         }
     } catch (error) {
+        console.log(error)
         return res.status(500).json({ message: 'INVALID QR CODE'});
     }
 };
