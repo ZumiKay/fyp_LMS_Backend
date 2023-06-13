@@ -123,7 +123,6 @@ export const registerStudent = async (req, res) => {
 
         return res.status(200).send({ message: 'Student Registered', password: password.password });
     } catch (error) {
-       
         return res.sendStatus(500);
     }
 };
@@ -134,7 +133,6 @@ export const delete_student = async (req, res) => {
         await db.student.destroy({ where: { studentID: { [Op.in]: id } } });
         return res.sendStatus(200);
     } catch (error) {
-       
         return res.sendStatus(500);
     }
 };
@@ -296,7 +294,6 @@ export const register_HD = async (req, res) => {
             return res.status(200).json({ message: 'Headdepartment Registered', password: password.password });
         })
         .catch((err) => {
-            
             return res.status(500);
         });
 };
@@ -351,8 +348,8 @@ export const scanEntry = async (req, res) => {
             return res.status(500).json({ message: 'INVALID QR CODE' });
         }
     } catch (error) {
-        console.log(error)
-        return res.status(500).json({ message: 'INVALID QR CODE'});
+        console.log(error);
+        return res.status(500).json({ message: 'INVALID QR CODE' });
     }
 };
 
@@ -428,7 +425,6 @@ export const borrowBook = async (req, res) => {
 
         return res.status(200).json({ borrow_id, qrcode: data.qrcode });
     } catch (err) {
-       
         return res.status(500);
     }
 };
@@ -517,7 +513,7 @@ export const pickupandreturnbook = async (req, res) => {
                         await db.borrow_book.update(
                             {
                                 status: data.expect_return_date < date ? `returned ${lateday(date, data.expect_return_date)} days late` : 'returned',
-                                return_date: date,
+                                return_date: new Date(),
                                 qrcode: ''
                             },
                             {
@@ -545,7 +541,6 @@ export const pickupandreturnbook = async (req, res) => {
                 return res.status(500).send('Error');
             }
         } catch (error) {
-            console.log(error);
             return res.status(500).send('Error');
         }
     }
@@ -785,79 +780,79 @@ export const exportreport = async (req, res) => {
         if (result.length === 0) {
             return res.status(404).send('No Student Found');
         } else {
+            const data = result.map((student) => {
+                const { studentID, firstname, lastname, department, email, phone_number } = student;
 
-        const data = result.map((student) => {
-            const { studentID, firstname, lastname, department, email, phone_number } = student;
+                const library_entry = filterDataByTimeRange(student.library_entries, getDaysByInformationDate(informationdate));
+                const borrowedbook = information !== 'entry' ? filterDataByTimeRange(student.borrow_books, getDaysByInformationDate(informationdate)) : [];
 
-            const library_entry = filterDataByTimeRange(student.library_entries, getDaysByInformationDate(informationdate));
-            const borrowedbook = information !== 'entry' ? filterDataByTimeRange(student.borrow_books, getDaysByInformationDate(informationdate)) : [];
+                return {
+                    ID: studentID,
+                    fullname: `${firstname} ${lastname}`,
+                    department,
+                    email,
+                    phone_number,
+                    library_entry,
+                    borrowedbook
+                };
+            });
 
-            return {
-                ID: studentID,
-                fullname: `${firstname} ${lastname}`,
-                department,
-                email,
-                phone_number,
-                library_entry,
-                borrowedbook
-            };
-        });
+            if (filetype === 'pdf') {
+                const print = new PdfPrinter(fonts);
 
-        if (filetype === 'pdf') {
-            const print = new PdfPrinter(fonts);
+                const now = new Date();
 
-            const now = new Date();
-
-            const docDefinition = {
-                content: [
-                    { text: `Report for students in ${data[0].department}`, style: 'header' },
-                    `All Student Information from ${new Date(now - getDaysByInformationDate(informationdate) * 24 * 60 * 60 * 1000).toLocaleDateString('en')} to ${now.toLocaleDateString('en')}`,
-                    {
-                        style: 'tableExample',
-                        table: {
-                            headerRows: 1,
-                            body: [
-                                [
-                                    { text: 'ID', style: 'tableHeader' },
-                                    { text: 'Name', style: 'tableHeader' },
-                                    { text: 'Department', style: 'tableHeader' },
-                                    { text: 'Email', style: 'tableHeader' },
-                                    { text: 'Phone Number', style: 'tableHeader' },
-                                    { text: 'Library Entry', style: 'tableHeader' },
-                                    information !== 'entry' ? { text: 'Borrowed Book', style: 'tableHeader' } : null
-                                ],
-                                ...data.map((i) => [
-                                    i.ID,
-                                    i.fullname,
-                                    i.department,
-                                    i.email,
-                                    i.phone_number,
-                                    informationtype !== 'short' ? i.library_entry.map((j) => j.entry_date).join(', ') : `${i.library_entry.length} Times`,
-                                    information !== 'entry' ? `${i.borrowedbook.map((obj) => obj.Books.length).reduce((acc, length) => acc + length, 0)} books` : null
-                                ])
-                            ]
+                const docDefinition = {
+                    content: [
+                        { text: `Report for students in ${data[0].department}`, style: 'header' },
+                        `All Student Information from ${new Date(now - getDaysByInformationDate(informationdate) * 24 * 60 * 60 * 1000).toLocaleDateString('en')} to ${now.toLocaleDateString('en')}`,
+                        {
+                            style: 'tableExample',
+                            table: {
+                                headerRows: 1,
+                                body: [
+                                    [
+                                        { text: 'ID', style: 'tableHeader' },
+                                        { text: 'Name', style: 'tableHeader' },
+                                        { text: 'Department', style: 'tableHeader' },
+                                        { text: 'Email', style: 'tableHeader' },
+                                        { text: 'Phone Number', style: 'tableHeader' },
+                                        { text: 'Library Entry', style: 'tableHeader' },
+                                        information !== 'entry' ? { text: 'Borrowed Book', style: 'tableHeader' } : null
+                                    ],
+                                    ...data.map((i) => [
+                                        i.ID,
+                                        i.fullname,
+                                        i.department,
+                                        i.email,
+                                        i.phone_number,
+                                        informationtype !== 'short' ? i.library_entry.map((j) => j.entry_date).join(', ') : `${i.library_entry.length} Times`,
+                                        information !== 'entry' ? `${i.borrowedbook.map((obj) => obj.Books.length).reduce((acc, length) => acc + length, 0)} books` : null
+                                    ])
+                                ]
+                            }
                         }
+                    ],
+                    styles: {
+                        header: { fontSize: 16, bold: true, margin: [0, 0, 0, 10] },
+                        tableExample: { margin: [0, 5, 0, 15] },
+                        tableHeader: { bold: true, fontSize: 13, color: 'black' }
                     }
-                ],
-                styles: {
-                    header: { fontSize: 16, bold: true, margin: [0, 0, 0, 10] },
-                    tableExample: { margin: [0, 5, 0, 15] },
-                    tableHeader: { bold: true, fontSize: 13, color: 'black' }
-                }
-            };
+                };
 
-            const pdfdoc = print.createPdfKitDocument(docDefinition);
-            pdfdoc.pipe(res);
-            pdfdoc.end();
-        } else {
-            const workbook = generateExcel(data, information, informationtype);
-            const buffer = await workbook.xlsx.writeBuffer();
-            res.setHeader('Content-Disposition', `attachment; filename="${name}.xlsx"`);
-            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            res.send(buffer);
-        }}
+                const pdfdoc = print.createPdfKitDocument(docDefinition);
+                pdfdoc.pipe(res);
+                pdfdoc.end();
+            } else {
+                const workbook = generateExcel(data, information, informationtype);
+                const buffer = await workbook.xlsx.writeBuffer();
+                res.setHeader('Content-Disposition', `attachment; filename="${name}.xlsx"`);
+                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                res.send(buffer);
+            }
+        }
     } catch (error) {
-        return res.status(500).json( { message:'An error occurred'});
+        return res.status(500).json({ message: 'An error occurred' });
     }
 };
 const filterDataByTimeRange = (data, range) => {
