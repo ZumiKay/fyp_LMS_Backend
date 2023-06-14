@@ -331,7 +331,7 @@ export const scanEntry = async (req, res) => {
             if (stu) {
                 await db.library_entry.create({
                     studentID: id_number,
-                    entry_date: nowDate.toString()
+                    entry_date: `${nowDate.getDate}/${nowDate.getMonth}/${nowDate.getFullYear}, ${nowDate.getHours.toString().padStart(2, '0')}:${nowDate.getMinutes.toString().padStart(2, '0')}:${nowDate.getSeconds.toString().padStart(2, '0')}`
                 });
 
                 return res.status(200).json({
@@ -826,7 +826,7 @@ export const exportreport = async (req, res) => {
                                         i.department,
                                         i.email,
                                         i.phone_number,
-                                        informationtype !== 'short' ? i.library_entry.map((j) => j.entry_date).join(', ') : `${i.library_entry.length} Times`,
+                                        informationtype !== 'short' ? i.library_entry.map((j) => `${new Date(j.createdAt).getDate()}/${new Date(j.createdAt).getMonth() + 1}/${new Date(j.createdAt).getFullYear()}/\n${new Date(j.createdAt).getHours()}:${new Date(j.createdAt).getMinutes().toString().padStart(2, '0')}:${new Date(j.createdAt).getSeconds().toString().padStart(2, '0')}`).join(', ') : `${i.library_entry.length} Times`,
                                         information !== 'entry' ? `${i.borrowedbook.map((obj) => obj.Books.length).reduce((acc, length) => acc + length, 0)} books` : null
                                     ])
                                 ]
