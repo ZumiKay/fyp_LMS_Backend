@@ -331,7 +331,7 @@ export const scanEntry = async (req, res) => {
             if (stu) {
                 await db.library_entry.create({
                     studentID: id_number,
-                    entry_date: `${nowDate.getDate}/${nowDate.getMonth}/${nowDate.getFullYear}, ${nowDate.getHours.toString().padStart(2, '0')}:${nowDate.getMinutes.toString().padStart(2, '0')}:${nowDate.getSeconds.toString().padStart(2, '0')}`
+                    entry_date: nowDate
                 });
 
                 return res.status(200).json({
@@ -766,14 +766,7 @@ export const exportreport = async (req, res) => {
                     model: db.library_entry,
                     as: 'library_entries'
                 },
-                {
-                    model: db.borrow_book,
-                    where: {
-                        status: {
-                            [Op.ne]: 'To Pickup'
-                        }
-                    }
-                }
+                db.borrow_book
             ]
         });
 
@@ -782,7 +775,7 @@ export const exportreport = async (req, res) => {
         } else {
             const data = result.map((student) => {
                 const { studentID, firstname, lastname, department, email, phone_number } = student;
-
+                console.log(result)
                 const library_entry = filterDataByTimeRange(student.library_entries, getDaysByInformationDate(informationdate));
                 const borrowedbook = information !== 'entry' ? filterDataByTimeRange(student.borrow_books, getDaysByInformationDate(informationdate)) : [];
 
@@ -827,7 +820,7 @@ export const exportreport = async (req, res) => {
                                         i.email,
                                         i.phone_number,
                                         informationtype !== 'short' ? i.library_entry.map((j) => `${new Date(j.createdAt).getDate()}/${new Date(j.createdAt).getMonth() + 1}/${new Date(j.createdAt).getFullYear()}/\n${new Date(j.createdAt).getHours()}:${new Date(j.createdAt).getMinutes().toString().padStart(2, '0')}:${new Date(j.createdAt).getSeconds().toString().padStart(2, '0')}`).join(', ') : `${i.library_entry.length} Times`,
-                                        information !== 'entry' ? `${i.borrowedbook.map((obj) => obj.Books.length).reduce((acc, length) => acc + length, 0)} books` : null
+                                        information !== 'entry' ? `${i.borrowedbook.filter(({status}) => status !== 'To Pickup').map((obj) => obj.Books.length).reduce((acc, length) => acc + length, 0)}\n books` : null
                                     ])
                                 ]
                             }
@@ -866,7 +859,7 @@ const filterDataByTimeRange = (data, range) => {
 };
 const getDaysByInformationDate = (informationdate) => {
     switch (informationdate) {
-        case 'tweek':
+        case '1week':
             return 7;
         case '2week':
             return 14;

@@ -160,7 +160,7 @@ export const generateExcel = (data, information, informationtypes) => {
             name: i.fullname,
             department: i.department,
             email: i.email,
-            entry: informationtypes !== 'short' ? i.library_entry.map((j) => j.entry_date).join(', ') : i.library_entry.length,
+            entry: informationtypes !== 'short' ? i.library_entry.map((j) => `${new Date(j.createdAt).getDate()}/${new Date(j.createdAt).getMonth() + 1}/${new Date(j.createdAt).getFullYear()}/\n${new Date(j.createdAt).getHours()}:${new Date(j.createdAt).getMinutes().toString().padStart(2, '0')}:${new Date(j.createdAt).getSeconds().toString().padStart(2, '0')}`).join(', ') : i.library_entry.length,
             borrow_book: information !== 'entry' ? i.borrowedbook.reduce((totalLength, obj) => totalLength + obj.Books.length, 0) : null
         });
     });
