@@ -19,7 +19,7 @@ require('dotenv').config();
 app.use(
     cors({
         origin: 'https://fyp-9ae4d.web.app'
-    })
+})
 );
 app.use(morgan('dev'));
 app.use(express.json());

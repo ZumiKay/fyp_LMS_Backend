@@ -315,10 +315,10 @@ export const scanEntry = async (req, res) => {
     try {
         const { url } = req.body;
         const id = url.replace('https://my.paragoniu.edu.kh/qr?student_id=', '');
-
+        console.log(id)
         const response = await axios.get(`https://my.paragoniu.edu.kh/api/anonymous/students/${id}`);
         const data = response.data.data;
-
+        
         if (data) {
             const nowDate = new Date();
             const id_number = data.id_number;
@@ -331,7 +331,7 @@ export const scanEntry = async (req, res) => {
             if (stu) {
                 await db.library_entry.create({
                     studentID: id_number,
-                    entry_date: nowDate
+                    entry_date: nowDate.toString()
                 });
 
                 return res.status(200).json({
