@@ -315,10 +315,10 @@ export const scanEntry = async (req, res) => {
     try {
         const { url } = req.body;
         const id = url.replace('https://my.paragoniu.edu.kh/qr?student_id=', '');
-        console.log(id)
+        console.log(id);
         const response = await axios.get(`https://my.paragoniu.edu.kh/api/anonymous/students/${id}`);
         const data = response.data.data;
-        
+
         if (data) {
             const nowDate = new Date();
             const id_number = data.id_number;
@@ -754,10 +754,11 @@ var fonts = {
     }
 };
 export const exportreport = async (req, res) => {
-    const { name, department, information, informationtype, informationdate, filetype } = req.body;
-
+    const { name, department, information, informationtype, informationdate } = req.body;
+    const now = new Date()
     try {
-        const result = await db.student.findAll({
+        
+        const result = department !== 'all' ? await db.student.findAll({
             where: {
                 department: department
             },
@@ -768,14 +769,20 @@ export const exportreport = async (req, res) => {
                 },
                 db.borrow_book
             ]
-        });
+        }) : await db.student.findAll({ where:{} , include: [
+            {
+                model: db.library_entry,
+                as: 'library_entries'
+            },
+            db.borrow_book
+        ]});
 
         if (result.length === 0) {
             return res.status(404).send('No Student Found');
         } else {
             const data = result.map((student) => {
                 const { studentID, firstname, lastname, department, email, phone_number } = student;
-                console.log(result)
+                console.log(result);
                 const library_entry = filterDataByTimeRange(student.library_entries, getDaysByInformationDate(informationdate));
                 const borrowedbook = information !== 'entry' ? filterDataByTimeRange(student.borrow_books, getDaysByInformationDate(informationdate)) : [];
 
@@ -790,59 +797,11 @@ export const exportreport = async (req, res) => {
                 };
             });
 
-            if (filetype === 'pdf') {
-                const print = new PdfPrinter(fonts);
-
-                const now = new Date();
-
-                const docDefinition = {
-                    content: [
-                        { text: `Report for students in ${data[0].department}`, style: 'header' },
-                        `All Student Information from ${new Date(now - getDaysByInformationDate(informationdate) * 24 * 60 * 60 * 1000).toLocaleDateString('en')} to ${now.toLocaleDateString('en')}`,
-                        {
-                            style: 'tableExample',
-                            table: {
-                                headerRows: 1,
-                                body: [
-                                    [
-                                        { text: 'ID', style: 'tableHeader' },
-                                        { text: 'Name', style: 'tableHeader' },
-                                        { text: 'Department', style: 'tableHeader' },
-                                        { text: 'Email', style: 'tableHeader' },
-                                        { text: 'Phone Number', style: 'tableHeader' },
-                                        { text: 'Library Entry', style: 'tableHeader' },
-                                        information !== 'entry' ? { text: 'Borrowed Book', style: 'tableHeader' } : null
-                                    ],
-                                    ...data.map((i) => [
-                                        i.ID,
-                                        i.fullname,
-                                        i.department,
-                                        i.email,
-                                        i.phone_number,
-                                        informationtype !== 'short' ? i.library_entry.map((j) => `${new Date(j.createdAt).getDate()}/${new Date(j.createdAt).getMonth() + 1}/${new Date(j.createdAt).getFullYear()}/\n${new Date(j.createdAt).getHours()}:${new Date(j.createdAt).getMinutes().toString().padStart(2, '0')}:${new Date(j.createdAt).getSeconds().toString().padStart(2, '0')}`).join(', ') : `${i.library_entry.length} Times`,
-                                        information !== 'entry' ? `${i.borrowedbook.filter(({status}) => status !== 'To Pickup').map((obj) => obj.Books.length).reduce((acc, length) => acc + length, 0)}\n books` : null
-                                    ])
-                                ]
-                            }
-                        }
-                    ],
-                    styles: {
-                        header: { fontSize: 16, bold: true, margin: [0, 0, 0, 10] },
-                        tableExample: { margin: [0, 5, 0, 15] },
-                        tableHeader: { bold: true, fontSize: 13, color: 'black' }
-                    }
-                };
-
-                const pdfdoc = print.createPdfKitDocument(docDefinition);
-                pdfdoc.pipe(res);
-                pdfdoc.end();
-            } else {
-                const workbook = generateExcel(data, information, informationtype);
-                const buffer = await workbook.xlsx.writeBuffer();
-                res.setHeader('Content-Disposition', `attachment; filename="${name}.xlsx"`);
-                res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                res.send(buffer);
-            }
+            const workbook = generateExcel(data, information, informationtype , `${new Date(now - getDaysByInformationDate(informationdate)* 24 * 60 * 60 * 1000).toLocaleDateString('en')}`);
+            const buffer = await workbook.xlsx.writeBuffer();
+            res.setHeader('Content-Disposition', `attachment; filename="${name}.xlsx"`);
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.send(buffer);
         }
     } catch (error) {
         return res.status(500).json({ message: 'An error occurred' });

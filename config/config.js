@@ -140,11 +140,12 @@ export async function generateQRCodeAndUploadToS3(text, bucketName, key) {
 //GENERATE REPORT
 
 
-export const generateExcel = (data, information, informationtypes) => {
+export const generateExcel = (data, information, informationtypes, generateddate) => {
     const workbook = new excelmaker.Workbook();
     const worksheet = workbook.addWorksheet('Sheet1');
+    
     workbook.created = new Date();
-
+    
     worksheet.columns = [
         { header: 'ID', key: 'id', width: 15 },
         { header: 'Name', key: 'name', width: 15 },
@@ -153,6 +154,7 @@ export const generateExcel = (data, information, informationtypes) => {
         { header: 'Library Entry (Times)', key: 'entry', width: 40 },
         information !== 'entry' && { header: 'Borrowed Book (books)', key: 'borrow_book', width: 40 }
     ];
+   
 
     data.forEach((i) => {
         worksheet.addRow({
