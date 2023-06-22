@@ -6,7 +6,7 @@ const axios = require('axios').default;
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
-const PdfPrinter = require('pdfmake');
+
 
 const randomgeneratepassword = (length) => {
     let result = '';
@@ -314,8 +314,13 @@ export const createLibrarian = async (req, res) => {
 export const scanEntry = async (req, res) => {
     try {
         const { url } = req.body;
-        const id = url.replace('https://my.paragoniu.edu.kh/qr?student_id=', '');
-        console.log(id);
+        let id
+        if(url.includes('https://my.paragoniu.edu.kh/qr?student_id=')) {
+            id = url.replace('https://my.paragoniu.edu.kh/qr?student_id=', '');
+        } else {
+            id = url
+        }
+        
         const response = await axios.get(`https://my.paragoniu.edu.kh/api/anonymous/students/${id}`);
         const data = response.data.data;
 
@@ -345,11 +350,11 @@ export const scanEntry = async (req, res) => {
                 return res.status(401).json({ message: 'PLEASE REGISTER THE STUDENT' });
             }
         } else {
-            return res.status(500).json({ message: 'INVALID QR CODE' });
+            return res.status(500).json({ message: 'INVALID' });
         }
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: 'INVALID QR CODE' });
+        return res.status(500).json({ message: 'INVALID' });
     }
 };
 
@@ -570,7 +575,12 @@ export const getborrowbook_librarian = async (req, res) => {
                     const expectreturn = new Date(book.expect_return_date);
                     if (expectreturn >= date) {
                         const day = dayleft(book.expect_return_date);
-                        return_date = `To be returned in ${day} days`;
+                        if(day > 0) {
+                            return_date = `To be returned in ${day} days`;
+                        } else {
+                            return_date = 'Please return the book'
+                        }
+                        
                     } else {
                         return_date = 'Please return the book';
                     }

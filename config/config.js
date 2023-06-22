@@ -20,13 +20,7 @@ export const dbconfig = {
     db: process.env.DB_NAME
 };
 
-// export const dbconfig = {
-//     host:"localhost",
-//     dialect: 'postgres',
-//     user: "lms",
-//     password: 'lms123',
-//     db: "fyp"
-// };
+
 
 export const initalrole = async (role, book) => {
     const allrole = await role.findAll();
