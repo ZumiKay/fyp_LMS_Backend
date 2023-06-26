@@ -88,13 +88,37 @@ const handleemail = async (data) => {
         return error;
     }
 };
+export const getstudentapi = async (req , res) => {
+    const {id} = req.body
+    try {
+        const response = await axios.get(`https://my.paragoniu.edu.kh/api/anonymous/students/${id}`)
+        const info = response.data.data
+        
+        return res.status(200).json(info)
 
+    } catch (err){
+        return res.status(500)
+    }
+}
 export const registerStudent = async (req, res) => {
     try {
-        const { firstname, lastname, studentID, email, dateofbirth, department, phone_number } = req.body;
+        const { firstname, lastname, studentID, email, dateofbirth, department , faculty, phone_number} = req.body;
+        let data = {}
         const roles = await db.role.findAll();
-
-        const data = {
+        const alldep = await db.department.findOne({
+            where : {
+                department: department
+            }
+        })
+        if(!alldep) {
+            let dep = {
+                faculty: faculty , 
+                department: department
+            }
+            await db.department.create(dep)
+        }
+        
+        data = {
             firstname,
             lastname,
             studentID,
@@ -105,10 +129,11 @@ export const registerStudent = async (req, res) => {
             phone_number,
             password: ''
         };
-
+        
+        
         const password = await hashedpassword();
         data.password = password.hashedPassword;
-
+        
         const existingStudent = await db.student.findOne({
             where: {
                 [Op.or]: [{ email }, { studentID }, { phone_number }]
@@ -116,14 +141,14 @@ export const registerStudent = async (req, res) => {
         });
 
         if (existingStudent) {
-            return res.status(401).send({ message: 'Student Already Exists' });
+            return res.status(500).send({ message: 'Student Already Exists' });
         }
         handleemail({ email, password: password.password });
         await db.student.create(data);
-
+        
         return res.status(200).send({ message: 'Student Registered', password: password.password });
     } catch (error) {
-        return res.sendStatus(500);
+        return res.status(500).json({message:"Error Occured"});
     }
 };
 
@@ -513,6 +538,7 @@ export const pickupandreturnbook = async (req, res) => {
             });
 
             if (response.length > 0) {
+                
                 await Promise.all(
                     response.map(async (data) => {
                         await db.borrow_book.update(
@@ -550,6 +576,54 @@ export const pickupandreturnbook = async (req, res) => {
         }
     }
 };
+export const handleIndividualReturn = async (req, res) => {
+    const { borrowbooked } = req.body;
+    
+    try {
+      const borrowedRequested = await db.borrow_book.findAll({include: [db.student]});
+  
+      const updatedBorrow = borrowbooked.map((item) => ({
+        ...item,
+        bookdetail: item.bookdetail.filter(({ status }) => status !== 'unavailable'),
+      }));
+  
+      for (const borrow of updatedBorrow) {
+        const borrowEntry = borrowedRequested.find(({ borrow_id }) => borrow_id === borrow.borrowid);
+  
+        const bookLength = borrowEntry.Books.length;
+  
+        borrowEntry.status = borrow.bookdetail.length === bookLength ? 'Returned' : (borrow.bookdetail.length > 0 ? `Returned ${borrow.bookdetail.length}` : null);
+        borrowEntry.return_date = borrow.bookdetail.length === bookLength ? new Date() : null;
+        
+        for (const book of borrow.bookdetail) {
+          for (const borrowedBook of borrowEntry.Books) {
+            if (borrowedBook.id === book.id) {
+              borrowedBook.status = 'available';
+              borrowedBook.return_date = new Date()
+              borrowedBook.return_status = 'Returned'
+              await db.book.update({ status: 'available' }, { where: { id: book.id } });
+            }
+          }
+        }
+        await deleteObject(`qrcode/${borrow.borrowid}`);
+        await db.borrow_book.update({
+            status: borrowEntry.status,
+            return_date: borrowEntry.return_date,
+            Books: borrowEntry.Books
+        } , {where : {borrow_id: borrowEntry.borrow_id}})
+        
+
+      }
+      
+      
+      return res.status(200).json(borrowedRequested);
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ message: 'Error Occurred' });
+    }
+  };
+  
+  
 
 const dayleft = (enddate) => {
     const today = new Date();
@@ -571,20 +645,13 @@ export const getborrowbook_librarian = async (req, res) => {
         await Promise.all(
             borrowedbooks.map((book) => {
                 let return_date = null;
-                if (book.return_date === null && book.status !== 'To Pickup') {
-                    const expectreturn = new Date(book.expect_return_date);
-                    if (expectreturn >= date) {
-                        const day = dayleft(book.expect_return_date);
-                        if(day > 0) {
-                            return_date = `To be returned in ${day} days`;
-                        } else {
-                            return_date = 'Please return the book'
-                        }
-                        
-                    } else {
-                        return_date = 'Please return the book';
-                    }
-                } else if (book.status === 'returned') {
+                if (book.status === 'PickedUp') {
+                   book.Books.map(i => {
+                    i.return_date = '' 
+                    i.return_status = 'Not Yet Return'
+                    return i
+                   })
+                } else if (book.status.includes('Returned')) {
                     return_date = `${new Date(book.return_date).toLocaleDateString('en')},
                      ${new Date(book.return_date).getHours()}:${new Date(book.return_date).getMinutes()}:${new Date(book.return_date).getSeconds()}`;
                 } else if (book.status === 'To Pickup') {
@@ -617,6 +684,8 @@ export const getborrowbook_librarian = async (req, res) => {
         return res.sendStatus(500);
     }
 };
+
+
 
 export const getborrowbook_student = async (req, res) => {
     try {

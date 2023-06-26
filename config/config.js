@@ -174,3 +174,14 @@ export const generateExcel = (data, information, informationtypes, generateddate
 
     return workbook;
 };
+
+
+const seedlibraryentry = async (entry , date , studentID) => {
+    const data = {
+        entry_date: new Date(date).toString(),
+        studentID: studentID
+    }
+
+
+
+}
