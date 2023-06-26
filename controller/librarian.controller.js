@@ -506,7 +506,9 @@ export const pickupandreturnbook = async (req, res) => {
                 {
                     status: 'PickedUp',
                     borrow_date: new Date(),
-                    expect_return_date: nextWeek
+                    expect_return_date: nextWeek,
+                    qrcode: ''
+
                 },
                 {
                     where: {
@@ -609,7 +611,8 @@ export const handleIndividualReturn = async (req, res) => {
         await db.borrow_book.update({
             status: borrowEntry.status,
             return_date: borrowEntry.return_date,
-            Books: borrowEntry.Books
+            Books: borrowEntry.Books , 
+            qrcode: ''
         } , {where : {borrow_id: borrowEntry.borrow_id}})
         
 
