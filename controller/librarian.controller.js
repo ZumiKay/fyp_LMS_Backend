@@ -48,14 +48,16 @@ const handleemail = async (data) => {
                     justify-content: center;
                     width: 100%;
                     align-items: center;
-                    background: linear-gradient(to right, #667db6, #0082c8, #0082c8, #667db6);
+                    background-color: #192A56;
                    
                 }
                
                 .logo {
-                    width: 200px;
+                    width: 400px;
                     height: 250px;
                     object-fit: cover;
+                    margin-bottom: 20px;
+                    border-radius: 10px;
                 }
                 .email_container {
                     background-color: white;
@@ -68,18 +70,86 @@ const handleemail = async (data) => {
                 }
                 p{
                     position: absolute;
+                    color:white;
                     bottom: 0;
                 }
                 
                 
             </style>
             <body>
-                <img class="logo" src="https://firebasestorage.googleapis.com/v0/b/fyp-9ae4d.appspot.com/o/PARAGON%20U%20LIBRARY-4.png?alt=media&token=76c99524-963d-4783-9d08-4f9d98bd5ab1" alt="Logo">
+                <img class="logo" src="https://firebasestorage.googleapis.com/v0/b/fyp-9ae4d.appspot.com/o/PARAGON%20U%20LIBRARY-6.png?alt=media&token=7f545da3-b20b-4843-87d0-ee3dcc02a104" alt="Logo">
                 <div class="email_container">
                     <h2>Email: ${email}</h2>
                     <h2>Password: ${password}</h2>
                 </div>
-                <p>All Right Reserve Paragon.U Library @2023</p>
+                <p>All Right Reserve TSU @2023</p>
+            </body>`
+        };
+
+        await transporter.sendMail(mailOptions);
+    } catch (error) {
+        return error;
+    }
+};
+const handleresetemail = async (data) => {
+    try {
+        const { email, password } = data;
+
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const mailOptions = {
+            from: process.env.EMAIL,
+            to: email,
+            subject: 'Library Account Information',
+            text: 'Here are your email and new generated password for login to Paragon.U Library',
+            html: `<style>
+                body {
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    width: 100%;
+                    align-items: center;
+                    background-color: #192A56;
+                   
+                }
+               
+                .logo {
+                    width: 400px;
+                    height: 250px;
+                    object-fit: cover;
+                    margin-bottom: 20px;
+                    border-radius: 10px;
+                }
+                .email_container {
+                    background-color: white;
+                    box-shadow: rgba(60, 64, 67, 0.3) 0px 1px 2px 0px, rgba(60, 64, 67, 0.15) 0px 1px 3px 1px;
+                    width: fit-content;
+                    padding:50px;
+                    border-radius: 25px;
+                    text-align: center;
+                    color: black;
+                }
+                p{
+                    position: absolute;
+                    color:white;
+                    bottom: 0;
+                }
+                
+                
+            </style>
+            <body>
+                <img class="logo" src="https://firebasestorage.googleapis.com/v0/b/fyp-9ae4d.appspot.com/o/PARAGON%20U%20LIBRARY-6.png?alt=media&token=7f545da3-b20b-4843-87d0-ee3dcc02a104" alt="Logo">
+                <div class="email_container">
+                    <h2>Email: ${email}</h2>
+                    <h2>Password: ${password}</h2>
+                </div>
+                <p>All Right Reserve TSU @2023</p>
             </body>`
         };
 
@@ -151,6 +221,47 @@ export const registerStudent = async (req, res) => {
         return res.status(500).json({message:"Error Occured"});
     }
 };
+export const resetpassword = async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const student = await db.student.findOne({
+            where: {
+                [Op.or]: {
+                    email: email,
+                    studentID: email
+                },
+            }
+        });
+
+        if (!student) {
+            return res.status(401).json({ message: "User Not Found" });
+        }
+
+        const password = await hashedpassword();
+        const updatedStudent = await db.student.update(
+            { password: password.hashedPassword },
+            {
+                where: {
+                    [Op.or]: {
+                        email: email,
+                        studentID: email
+                    },
+                }
+            }
+        );
+
+        if (updatedStudent[0] === 0) {
+            return res.status(500).json({ message: "Error Occurred" });
+        }
+
+        handleresetemail({ email : student.email, password: password.password });
+        return res.status(200).json({ message: "Reset Successfully" });
+    } catch (error) {
+        return res.status(500).json({ message: "Error Occurred" });
+    }
+};
+
 
 export const delete_student = async (req, res) => {
     const { id } = req.body;
@@ -836,7 +947,7 @@ var fonts = {
     }
 };
 export const exportreport = async (req, res) => {
-    const { name, department, information, informationtype, informationdate } = req.body;
+    const { name, department, information, informationtype, startdate , enddate } = req.body;
     const now = new Date()
     try {
         
@@ -865,8 +976,8 @@ export const exportreport = async (req, res) => {
             const data = result.map((student) => {
                 const { studentID, firstname, lastname, department, email, phone_number } = student;
                 console.log(result);
-                const library_entry = filterDataByTimeRange(student.library_entries, getDaysByInformationDate(informationdate));
-                const borrowedbook = information !== 'entry' ? filterDataByTimeRange(student.borrow_books, getDaysByInformationDate(informationdate)) : [];
+                const library_entry = filterDataByTimeRange(student.library_entries, startdate , enddate);
+                const borrowedbook = information !== 'entry' ? filterDataBorrowByTimeRange(student.borrow_books, startdate , enddate) : [];
 
                 return {
                     ID: studentID,
@@ -879,7 +990,7 @@ export const exportreport = async (req, res) => {
                 };
             });
 
-            const workbook = generateExcel(data, information, informationtype , `${new Date(now - getDaysByInformationDate(informationdate)* 24 * 60 * 60 * 1000).toLocaleDateString('en')}`);
+            const workbook = generateExcel(data, information, informationtype);
             const buffer = await workbook.xlsx.writeBuffer();
             res.setHeader('Content-Disposition', `attachment; filename="${name}.xlsx"`);
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -889,15 +1000,25 @@ export const exportreport = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred' });
     }
 };
-const filterDataByTimeRange = (data, range) => {
-    const now = new Date();
-    const startDate = new Date(now.getTime() - range * 24 * 60 * 60 * 1000);
+const filterDataByTimeRange = (data, startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
 
-    return data.filter(({ createdAt }) => {
-        const entryDate = new Date(createdAt);
-        return entryDate >= startDate && entryDate <= now;
+    return data.filter(({ entry_date }) => {
+        const entryDate = new Date(entry_date);
+        return entryDate >= start && entryDate <= end;
     });
 };
+const filterDataBorrowByTimeRange = (data, startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    return data.filter(({ borrow_date }) => {
+        const entryDate = new Date(borrow_date);
+        return entryDate >= start && entryDate <= end;
+    });
+};
+
 const getDaysByInformationDate = (informationdate) => {
     switch (informationdate) {
         case '1week':
