@@ -221,7 +221,7 @@ export const registerStudent = async (req, res) => {
         return res.status(500).json({message:"Error Occured"});
     }
 };
-export const resetpassword = async (req, res) => {
+export const resetPassword = async (req, res) => {
     const { email } = req.body;
 
     try {
@@ -233,19 +233,39 @@ export const resetpassword = async (req, res) => {
                 },
             }
         });
+        const librarian = await db.librarian.findOne({
+            where: {
+                [Op.or]: {
+                    email: email,
+                    cardID: email
+                },
 
-        if (!student) {
+            }
+        })
+        const headdepartment = await db.headdepartment.findOne({
+            where: {
+                [Op.or]: {
+                    email: email,
+                    ID: email
+                },
+
+            }
+            
+        })
+
+        if (!student && !headdepartment && !librarian) {
             return res.status(401).json({ message: "User Not Found" });
         }
+    
 
         const password = await hashedpassword();
-        const updatedStudent = await db.student.update(
+        const updatedStudent = await (student ? db.student : headdepartment ? db.headdepartment : db.librarian).update(
             { password: password.hashedPassword },
             {
                 where: {
                     [Op.or]: {
                         email: email,
-                        studentID: email
+                        [student ? `studentID` : headdepartment ? 'ID' : 'cardID']: email
                     },
                 }
             }
@@ -255,9 +275,10 @@ export const resetpassword = async (req, res) => {
             return res.status(500).json({ message: "Error Occurred" });
         }
 
-        handleresetemail({ email : student.email, password: password.password });
+        handleresetemail({ email : (student ? student.email : headdepartment ? headdepartment.email : librarian.email), password: password.password });
         return res.status(200).json({ message: "Reset Successfully" });
     } catch (error) {
+        console.log(error)
         return res.status(500).json({ message: "Error Occurred" });
     }
 };
