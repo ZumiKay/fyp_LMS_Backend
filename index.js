@@ -18,7 +18,7 @@ require('dotenv').config();
 //middleware
 app.use(
     cors({
-        origin: 'https://fyp-9ae4d.web.app'
+        origin: '*'
     })
 );
 app.use(morgan('dev'));
@@ -26,6 +26,7 @@ app.use(express.json());
 app.use(express.text());
 app.use(express.query());
 app.use(helmet());
+app.use(express.static('temp'))
 
 //
 app.use('/api', Router);

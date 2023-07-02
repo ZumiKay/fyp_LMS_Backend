@@ -6,8 +6,6 @@
   "scripts": {
     "test": "jest",
     "start": "nodemon -r esm index.js"
-    
-    
   },
   "keywords": [],
   "author": "",
@@ -38,7 +36,7 @@
     "qrcode": "^1.5.3",
     "sequelize": "^6.28.0",
     "uuid": "^9.0.0",
-    "uuidv4": "^6.2.13"
+    "uuidv4": "^6.2.13",
+    "xlsx-populate": "^1.21.0"
   }
- 
 }
