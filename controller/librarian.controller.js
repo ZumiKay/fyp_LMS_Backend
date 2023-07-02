@@ -287,12 +287,33 @@ export const resetPassword = async (req, res) => {
 export const delete_student = async (req, res) => {
     const { id } = req.body;
     try {
-        await db.student.destroy({ where: { studentID: { [Op.in]: id } } });
-        return res.sendStatus(200);
+      const borrowBooks = await db.borrow_book.findAll({ where: { studentID: { [Op.in]: id } } });
+  
+      for (const borrowBook of borrowBooks) {
+        if (!borrowBook.status.includes("Returned")) {
+          for (const book of borrowBook.Books) {
+            await db.book.update(
+              {
+                status: "available",
+                borrow_count: db.Sequelize.literal("borrow_count - 1"),
+              },
+              { where: { id: book.id } }
+            );
+          }
+        }
+      }
+  
+      await db.student.destroy({ where: { studentID: { [Op.in]: id } } });
+  
+      return res.sendStatus(200);
     } catch (error) {
-        return res.sendStatus(500);
+      
+      return res.sendStatus(500);
     }
-};
+  };
+  
+
+
 
 export const editstudent = async (req, res) => {
     try {
@@ -725,7 +746,7 @@ export const handleIndividualReturn = async (req, res) => {
         const borrowEntry = borrowedRequested.find(({ borrow_id }) => borrow_id === borrow.borrowid);
   
         const bookLength = borrowEntry.Books.length;
-  
+         
         borrowEntry.status = borrow.bookdetail.length === bookLength ? 'Returned' : (borrow.bookdetail.length > 0 ? `Returned ${borrow.bookdetail.length}` : null);
         borrowEntry.return_date = borrow.bookdetail.length === bookLength ? new Date() : null;
         
@@ -753,7 +774,7 @@ export const handleIndividualReturn = async (req, res) => {
       
       return res.status(200).json(borrowedRequested);
     } catch (error) {
-      console.log(error);
+      
       return res.status(500).json({ message: 'Error Occurred' });
     }
   };
@@ -922,9 +943,7 @@ export const deleteborrow_book = (req, res) => {
         })
         .then(async (response) => {
             if (response.length > 0) {
-                const bookUpdates = response
-                    .filter((book) => !book.status.includes('return'))
-                    .map((book) =>
+                const bookUpdates = response.map((book) =>
                         Promise.all(
                             book.Books.map((data) =>
                                 db.book.update(
