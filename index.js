@@ -43,38 +43,12 @@ const handleDBConnectionError = (error) => {
     startServer();
 };
 
-function generateRandomDate(start, end) {
-    const startDate = new Date(start).getTime();
-    const endDate = new Date(end).getTime();
-    const randomTimestamp = Math.random() * (endDate - startDate) + startDate;
-    return new Date(randomTimestamp);
-  }
-  
-  function generateRandomDateArray(years) {
-    const currentDate = new Date();
-    const dates = [];
-  
-    years.forEach((year) => {
-      const startDate = `${year}-01-01`;
-      const endDate = year === currentDate.getFullYear() ? currentDate.toISOString().split('T')[0] : `${year}-12-31`;
-  
-      const randomDate = generateRandomDate(startDate, endDate);
-      dates.push(randomDate);
-    });
-  
-    return dates;
-  }
-
-
 db.sequelize
     .authenticate()
     .then(() => {
         db.sequelize
             .sync()
             .then(() => {
-                // const years = [2019, 2019, 2019 , 2020 , 2020 , 2020, 2020 ,2021 , 2021 , 2022 , 2022, new Date().getFullYear()];
-                // const dateArray = generateRandomDateArray(years);
-            
                 console.log('Syned DB');
                 initalrole(db.role, db.book);
                 con.schedule('0 0 * * *', deletepickup_borrow);
@@ -90,19 +64,3 @@ db.sequelize
 
 startServer();
 
-const deletelibraryentry = (id) => {
-    db.library_entry
-        .destroy({
-            where: {
-                studentID: id
-            }
-        })
-        .then(() => console.log('Deleted'));
-};
-const seedlibraryentry = (id , dates) => {
-    let data = {
-        studentID: id,
-        entry_date: dates.toString()
-    }
-    db.library_entry.create(data).then(() => console.log("Seeded Entry"))
-}
