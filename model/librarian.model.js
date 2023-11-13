@@ -20,8 +20,6 @@ module.exports = (sequelize  , Sequelize) => {
         role_id: {
             type: Sequelize.STRING,
             allowNull: false,
-            
-
         },
         password: {
             type: Sequelize.STRING,

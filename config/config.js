@@ -1,10 +1,18 @@
+import { getDownloadURL, ref, uploadBytes, deleteObject } from 'firebase/storage';
+import Storage from './firebase';
+
 const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
 const QRCode = require('qrcode');
-
 const excelmaker = require('exceljs');
 require('dotenv').config();
+
+
+
+
+
+
 
 export const jwtconfig = {
     secret: process.env.JWT_SECRET,
@@ -20,7 +28,9 @@ export const dbconfig = {
     db: process.env.DB_NAME
 };
 
-
+export const resgiterLibrarian = () => {
+    
+}
 
 export const initalrole = async (role, book) => {
     const allrole = await role.findAll();
@@ -97,20 +107,7 @@ const awsS3config = {
     region: 'ap-southeast-1'
 };
 const S3 = new AWS.S3(awsS3config);
-export const deleteObject = async (key) => {
-    var params = {
-        Bucket: 'fyplms',
-        Key: key
-    };
 
-    await S3.deleteObject(params, function (err, data) {
-        if (err) {
-            console.log(err, err.stack);
-        } else {
-            console.log('File deleted successfully');
-        }
-    }).promise();
-};
 
 export async function generateQRCodeAndUploadToS3(text, bucketName, key) {
     // Generate QR code as a PNG buffer
@@ -174,3 +171,53 @@ export const generateExcel = (data, information, informationtypes, generateddate
 
     return workbook;
 };
+
+
+//Firebase Storage
+
+
+export const generateQRCodeAndUploadToFirebase = async (text) => {
+    try {
+      
+      const qrCodeBuffer = await QRCode.toBuffer(text, { type: 'png' });
+  
+      console.log('QR Code Buffer:', qrCodeBuffer);
+  
+      
+      if (!qrCodeBuffer || qrCodeBuffer.byteLength === undefined) {
+        throw new Error('QR Code Buffer is undefined or invalid format');
+      }
+  
+      
+      const filename = `qrcodes/${text}.png`;
+  
+      
+      const storageRef = ref(Storage, filename);
+  
+      
+      await uploadBytes(storageRef, qrCodeBuffer, {
+        contentType: 'image/png',
+      });
+  
+      // Get the public URL of the uploaded file
+      const downloadURL = await getDownloadURL(storageRef);
+  
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading QR code to Firebase:', error);
+      throw error; // Re-throw the error for handling elsewhere
+    }
+  };
+ export const deleteQRCodeFirebase = async (file) => {
+    const storageRef = ref(Storage , file)
+
+    try {
+        await deleteObject(storageRef)
+
+    } catch (error) {
+
+        throw error
+        
+    }
+ }
+  

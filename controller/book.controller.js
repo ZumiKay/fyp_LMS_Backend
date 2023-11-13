@@ -6,7 +6,7 @@ export const getbook = async (req, res) => {
     try {
       const books = await db.book.findAll();
       const allcategories = books.map(({ categories }) => categories);
-  
+     
       return res.status(200).json({
         allcategories,
         books,

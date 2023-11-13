@@ -26,6 +26,7 @@ const { createbook, deletebook, editbook, getbook } = require('../controller/boo
 const Router = _Router();
 const roles = getroles();
 
+
 //Authentication
 Router.post('/register-student', verifytoken, checkRole(roles.librarian), registerStudent);
 Router.post('/deletestudent', verifytoken, checkRole(roles.librarian), delete_student);
@@ -50,7 +51,7 @@ Router.get('/getborrowedbook/:ID', verifytoken, getborrowbook_student);
 Router.get('/getborrow_book', verifytoken, checkRole(roles.librarian), getborrowbook_librarian);
 Router.post('/r-pb', verifytoken, checkRole(roles.librarian), pickupandreturnbook);
 Router.post('/ir' , verifytoken , checkRole(roles.librarian), handleIndividualReturn)
-Router.post('/delete_borrow', verifytoken, checkRole(roles.librarian), deleteborrow_book);
+Router.post('/delete_borrow', verifytoken, deleteborrow_book);
 //Scan Entry
 Router.post('/s-entry', verifytoken, checkRole(roles.librarian), scanEntry);
 Router.get('/getstudent', verifytoken, checkRole(roles.headdepartment), checkRole(roles.librarian), getStudentList);

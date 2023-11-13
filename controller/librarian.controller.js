@@ -1,5 +1,7 @@
+
+
 const { Op } = require('sequelize');
-const { generateQRCodeAndUploadToS3, deleteObject, generateExcel } = require('../config/config');
+const { generateExcel, generateQRCodeAndUploadToFirebase, deleteQRCodeFirebase } = require('../config/config');
 
 const db = require('../model');
 const axios = require('axios').default;
@@ -586,7 +588,7 @@ export const borrowBook = async (req, res) => {
             return_date: null
         };
 
-        data.qrcode = await generateQRCodeAndUploadToS3(borrow_id, 'fyplms', `qrcode/${borrow_id}`);
+        data.qrcode = await generateQRCodeAndUploadToFirebase (borrow_id);
 
         await Promise.all(
             borrowbooks.map((book) =>
@@ -608,6 +610,7 @@ export const borrowBook = async (req, res) => {
 
         return res.status(200).json({ borrow_id, qrcode: data.qrcode });
     } catch (err) {
+        console.log(err)
         return res.status(500);
     }
 };
@@ -670,7 +673,7 @@ export const pickupandreturnbook = async (req, res) => {
                 }
             );
 
-            await deleteObject(`qrcode/${borrow_id}`);
+            await deleteQRCodeFirebase(`qrcodes/${borrow_id}.png`);
 
             return res.status(200).json({
                 borrow_id: response.borrow_id,
@@ -717,8 +720,6 @@ export const pickupandreturnbook = async (req, res) => {
                                 );
                             })
                         );
-
-                        await deleteObject(`qrcode/${data.borrow_id}`);
                     })
                 );
 
@@ -747,7 +748,7 @@ export const handleIndividualReturn = async (req, res) => {
   
         const bookLength = borrowEntry.Books.length;
          
-        borrowEntry.status = borrow.bookdetail.length === bookLength ? 'Returned' : (borrow.bookdetail.length > 0 ? `Returned ${borrow.bookdetail.length}` : null);
+        borrowEntry.status = borrow.bookdetail.length === bookLength ? 'Returned' : (borrow.bookdetail.length > 0 ? `Returned ${borrow.bookdetail.length}` : 'Returned');
         borrowEntry.return_date = borrow.bookdetail.length === bookLength ? new Date() : null;
         
         for (const book of borrow.bookdetail) {
@@ -760,7 +761,7 @@ export const handleIndividualReturn = async (req, res) => {
             }
           }
         }
-        await deleteObject(`qrcode/${borrow.borrowid}`);
+        
         await db.borrow_book.update({
             status: borrowEntry.status,
             return_date: borrowEntry.return_date,
@@ -774,7 +775,7 @@ export const handleIndividualReturn = async (req, res) => {
       
       return res.status(200).json(borrowedRequested);
     } catch (error) {
-      
+      console.log(error)
       return res.status(500).json({ message: 'Error Occurred' });
     }
   };
@@ -916,6 +917,7 @@ export const deletepickup_borrow = async () => {
                         )
                     )
                 );
+                await deleteQRCodeFirebase(`qrcodes/${data.borrow_id}.png`)
                 await db.borrow_book.destroy({
                     where: {
                         borrow_id: data.borrow_id
@@ -924,6 +926,8 @@ export const deletepickup_borrow = async () => {
             });
 
             await Promise.all(deletePromises);
+            
+            
         }
     } catch (error) {
         console.error(error);
@@ -940,7 +944,7 @@ export const deleteborrow_book = (req, res) => {
                     [Op.in]: id
                 }
             }
-        })
+        }) 
         .then(async (response) => {
             if (response.length > 0) {
                 const bookUpdates = response.map((book) =>
@@ -954,12 +958,16 @@ export const deleteborrow_book = (req, res) => {
                                         }
                                     }
                                 )
-                            )
+                            ) ,
+                            
                         )
                     );
 
                 await Promise.all(bookUpdates);
-
+                
+                response.map(async (book) => book.status === 'To Pickup' && await deleteQRCodeFirebase(`qrcodes/${book.borrow_id}.png`))
+               
+                
                 await db.borrow_book.destroy({
                     where: {
                         borrow_id: {
