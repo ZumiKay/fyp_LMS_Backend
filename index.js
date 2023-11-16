@@ -7,7 +7,7 @@ const Router = require('./Routes/route');
 const db = require('./model');
 const { initalrole } = require('./config/config');
 const con = require('node-cron');
-const { deletepickup_borrow } = require('./controller/librarian.controller');
+const { deletepickup_borrow, initializeLibrarian } = require('./controller/librarian.controller');
 
 require('dotenv').config();
 
@@ -51,6 +51,7 @@ db.sequelize
             .then(() => {
                 console.log('Syned DB');
                 initalrole(db.role, db.book);
+                initializeLibrarian("TestLibrarian" , '11223344' , 'zumilock011@gmail.com')
                 con.schedule('0 0 * * *', deletepickup_borrow);
                 
             })

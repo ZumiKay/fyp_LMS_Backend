@@ -276,8 +276,13 @@ export const resetPassword = async (req, res) => {
         if (updatedStudent[0] === 0) {
             return res.status(500).json({ message: "Error Occurred" });
         }
-
+        await db.usersession.destroy({where: {[Op.or] : {
+            user: email , 
+            user_id: email
+        }}})
+        
         handleresetemail({ email : (student ? student.email : headdepartment ? headdepartment.email : librarian.email), password: password.password });
+        
         return res.status(200).json({ message: "Reset Successfully" });
     } catch (error) {
         console.log(error)
@@ -351,108 +356,45 @@ export const editstudent = async (req, res) => {
     }
 };
 
-export const editlibrarian = (req, res) => {
-    const { id, oldpwd, newpwd, fullname, ID } = req.body;
-    db.librarian
-        .findOne({
-            where: {
-                id: id
-            }
-        })
-        .then(async (response) => {
-            if (response) {
-                if (newpwd !== '' && fullname === '' && ID === '') {
-                    const isMatch = await bcrypt.compare(oldpwd, response.password);
-                    if (isMatch) {
-                        const salt = await bcrypt.genSalt(10);
-                        const hashedpwd = await bcrypt.hash(newpwd, salt);
-                        await db.librarian.update({ password: hashedpwd }, { where: { id: id } });
-                        return res.sendStatus(200);
-                    }
-                } else if (fullname !== '' && newpwd === '' && ID === '') {
-                    await db.librarian.update(
-                        { fullname: fullname },
-                        {
-                            where: {
-                                id: id
-                            }
-                        }
-                    );
-                    return res.sendStatus(200);
-                } else if (fullname !== '' && newpwd !== '' && ID !== '') {
-                    const isMatch = await bcrypt.compare(oldpwd, response.password);
-                    if (isMatch) {
-                        const salt = await bcrypt.genSalt(10);
-                        const hashedpwd = await bcrypt.hash(newpwd, salt);
-                        await db.librarian.update(
-                            { password: hashedpwd, fullname: fullname, cardID: ID },
-                            {
-                                where: {
-                                    id: id
-                                }
-                            }
-                        );
-                        return res.sendStatus(200);
-                    }
-                } else if (fullname === '' && newpwd === '' && ID !== '') {
-                    await db.librarian.update(
-                        { cardID: ID },
-                        {
-                            where: {
-                                id: id
-                            }
-                        }
-                    );
-                    return res.sendStatus(200);
-                } else if (fullname !== '' && ID !== '' && newpwd === '') {
-                    await db.librarian.update(
-                        { fullname: fullname, cardID: ID },
-                        {
-                            where: {
-                                id: id
-                            }
-                        }
-                    );
-                    return res.sendStatus(200);
-                } else if (fullname !== '' && ID === '' && newpwd !== '') {
-                    const isMatch = await bcrypt.compare(oldpwd, response.password);
-                    if (isMatch) {
-                        const salt = await bcrypt.genSalt(10);
-                        const hashedpwd = await bcrypt.hash(newpwd, salt);
-                        await db.librarian.update(
-                            { password: hashedpwd, fullname: fullname },
-                            {
-                                where: {
-                                    id: id
-                                }
-                            }
-                        );
-                        return res.sendStatus(200);
-                    }
-                } else if (fullname === '' && ID !== '' && newpwd !== '') {
-                    const isMatch = await bcrypt.compare(oldpwd, response.password);
-                    if (isMatch) {
-                        const salt = await bcrypt.genSalt(10);
-                        const hashedpwd = await bcrypt.hash(newpwd, salt);
-                        await db.librarian.update(
-                            { password: hashedpwd, cardID: ID },
-                            {
-                                where: {
-                                    id: id
-                                }
-                            }
-                        );
-                        return res.sendStatus(200);
-                    }
-                } else {
-                    return res.sendStatus(400);
-                }
-            } else {
+export const editlibrarian = async (req, res) => {
+    try {
+        const { id, oldpwd, newpwd, fullname, ID } = req.body;
+        const response = await db.librarian.findOne({ where: { id: id } });
+
+        if (!response) {
+            return res.sendStatus(500);
+        }
+
+       
+        if (newpwd !== '') {
+            const isMatch = await bcrypt.compare(oldpwd, response.password);
+
+            if (!isMatch) {
                 return res.sendStatus(500);
             }
-        })
-        .catch(() => res.sendStatus(500));
+            const salt = await bcrypt.genSalt(10);
+            const hashedpwd = await bcrypt.hash(newpwd, salt);
+            await db.librarian.update({ password: hashedpwd }, { where: { id: id } });
+        }
+
+        if (fullname !== '') {
+            await db.librarian.update({ fullname: fullname }, { where: { id: id } });
+        }
+
+        if (ID !== '') {
+            await db.librarian.update({ cardID: ID }, { where: { id: id } });
+            await db.usersession.update({user_id: ID} , {where: {user: response.email}})
+        }
+
+        
+
+        return res.sendStatus(200);
+    } catch (error) {
+        console.error(error);
+        return res.sendStatus(500);
+    }
 };
+
 export const register_HD = async (req, res) => {
     const { firstname, lastname, ID, department, phone_number, email } = req.body;
     const roles = await db.role.findAll();
@@ -490,6 +432,41 @@ export const createLibrarian = async (req, res) => {
     };
     db.librarian.create(data).then(() => res.status(200).json({ password: password.password }));
 };
+export const initializeLibrarian = async (fullname , cardID , email) => {
+    try {
+        const password = await hashedpassword();
+        const roles = await db.role.findAll();
+        const data = {
+        fullname: fullname,
+        cardID: cardID,
+        email: email,
+        password: password.hashedPassword,
+        role_id: roles.find(({ role }) => role === 'librarian').role_id
+    };
+    
+    const [librarian, created] = await db.librarian.findOrCreate({
+        where: {
+          email: {
+            [Op.eq]: email, // Using Sequelize's operators
+          },
+        },
+        defaults: data,
+      });
+  
+      if (created) {
+        // Librarian was created
+      handleemail({email: email , password: password.password})
+      } else {
+        // Librarian already exists
+       console.log("Librarian already exists")
+      }
+    
+    } catch (error) {
+        console.log(error)
+        throw error
+    }
+    
+}
 
 export const scanEntry = async (req, res) => {
     try {

@@ -19,7 +19,7 @@ const {
     resetPassword
 } = require('../controller/librarian.controller');
 const { validate_bookregistration, validate_login, validate_registerInput } = require('../middleware/validate_data.middleware');
-const { createDepartment, getDepartment, getroles, login, logout, refreshToken, deletedepartment }  = require('../controller/student.controller');
+const { createDepartment, getDepartment, getroles, login, logout, refreshToken, deletedepartment, verifyToken }  = require('../controller/student.controller');
 const { checkRole, verifytoken }  = require('../middleware/role_check.middleware');
 const { createbook, deletebook, editbook, getbook } = require('../controller/book.controller');
 
@@ -41,6 +41,7 @@ Router.get('/getdepartment', verifytoken, getDepartment);
 Router.post('/deletedepartment' , verifytoken , checkRole(roles.librarian) , deletedepartment)
 Router.post('/getstudentapi' , verifytoken , checkRole(roles.librarian) , getstudentapi)
 Router.post('/resetstudent' , resetPassword)
+Router.post('/verifyuser' ,verifyToken)
 //book
 Router.get('/getbook', verifytoken, getbook);
 Router.post('/createbook', verifytoken, checkRole(roles.librarian), validate_bookregistration, createbook);
@@ -58,6 +59,6 @@ Router.get('/getstudent', verifytoken, checkRole(roles.headdepartment), checkRol
 //Export
 Router.post('/exportpdf', verifytoken, checkRole(roles.headdepartment), checkRole(roles.librarian), exportreport);
 
-Router.post('/registerlb', createLibrarian);
+
 
 module.exports = Router;

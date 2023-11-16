@@ -3,7 +3,6 @@ import Storage from './firebase';
 
 const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
-const AWS = require('aws-sdk');
 const QRCode = require('qrcode');
 const excelmaker = require('exceljs');
 require('dotenv').config();
@@ -28,9 +27,7 @@ export const dbconfig = {
     db: process.env.DB_NAME
 };
 
-export const resgiterLibrarian = () => {
-    
-}
+
 
 export const initalrole = async (role, book) => {
     const allrole = await role.findAll();
@@ -100,33 +97,7 @@ export const getgooglebook = (categories, db) => {
         });
 };
 
-//AWS
-const awsS3config = {
-    accessKeyId: process.env.AWS_ACCESSKEY,
-    secretAccessKey: process.env.AWS_SECRETKEY,
-    region: 'ap-southeast-1'
-};
-const S3 = new AWS.S3(awsS3config);
 
-
-export async function generateQRCodeAndUploadToS3(text, bucketName, key) {
-    // Generate QR code as a PNG buffer
-    const qrCodeBuffer = await QRCode.toBuffer(text, { type: 'png' });
-
-    // Upload the QR code buffer to S3
-    const params = {
-        Bucket: bucketName,
-        Key: key,
-        Body: qrCodeBuffer,
-        ContentType: 'image/png',
-        ACL: 'public-read'
-    };
-    const { Location } = await S3.upload(params).promise();
-
-    return Location;
-}
-
-/*......*/
 
 //GENERATE REPORT
 
